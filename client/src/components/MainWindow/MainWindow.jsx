@@ -44,6 +44,7 @@ const styles = {
   toolbar: {
     display: 'flex',
     justifyContent: 'flex-end',
+    alignItems: 'center',
     padding: '8px 16px',
     borderBottom: '1px solid #333',
     background: '#1a1a1a',

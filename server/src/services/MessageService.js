@@ -59,6 +59,13 @@ export class MessageService {
   }
 
   /**
+   * Add a system message (for document uploads, events, etc.)
+   */
+  static addSystemMessage(sessionId, content) {
+    return this._addMessage(sessionId, 'system', content);
+  }
+
+  /**
    * Internal method to add a message
    */
   static _addMessage(sessionId, role, content) {

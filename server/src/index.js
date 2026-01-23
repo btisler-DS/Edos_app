@@ -3,12 +3,15 @@ import express from 'express';
 import cors from 'cors';
 import { initializeSchema } from './db/connection.js';
 import { seedDatabase } from './db/seed.js';
+import { runMigrations } from './db/migrations.js';
 import { startMetadataRefreshJob, stopMetadataRefreshJob } from './jobs/metadataRefresh.js';
 
 // Routes
 import profilesRouter from './routes/profiles.js';
 import sessionsRouter from './routes/sessions.js';
 import messagesRouter from './routes/messages.js';
+import uploadRouter from './routes/upload.js';
+import anchorsRouter from './routes/anchors.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -21,6 +24,8 @@ app.use(express.json());
 app.use('/api/profiles', profilesRouter);
 app.use('/api/sessions', sessionsRouter);
 app.use('/api/sessions', messagesRouter); // Message routes are under /api/sessions/:sessionId/messages
+app.use('/api/sessions', anchorsRouter);  // Anchor routes are under /api/sessions/:sessionId/anchors
+app.use('/api/upload', uploadRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -46,15 +51,17 @@ async function start() {
     // Initialize database
     console.log('Initializing database...');
     initializeSchema();
+    runMigrations();
     seedDatabase();
 
     // Start background jobs
     startMetadataRefreshJob();
 
-    // Start server
-    app.listen(PORT, () => {
-      console.log(`EDOS server running on http://localhost:${PORT}`);
+    // Start server - bind to all interfaces for LAN access
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`EDOS server running on http://0.0.0.0:${PORT}`);
       console.log(`API available at http://localhost:${PORT}/api`);
+      console.log(`LAN access: http://<your-ip>:${PORT}`);
 
       // Log provider availability
       if (!process.env.ANTHROPIC_API_KEY && !process.env.OPENAI_API_KEY) {

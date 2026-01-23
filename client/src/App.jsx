@@ -1,8 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppStore } from './store/appStore';
 import LeftPanel from './components/LeftPanel/LeftPanel';
 import MainWindow from './components/MainWindow/MainWindow';
 import ModelProfileIndicator from './components/ModelProfileIndicator';
+
+const MOBILE_BREAKPOINT = 768;
 
 const styles = {
   container: {
@@ -54,11 +56,31 @@ const styles = {
 };
 
 function App() {
-  const { initialize, error, clearError, isLoading } = useAppStore();
+  const { initialize, error, clearError, isLoading, leftPanelCollapsed, toggleLeftPanel } = useAppStore();
+  const [isMobile, setIsMobile] = useState(window.innerWidth < MOBILE_BREAKPOINT);
 
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  // Handle responsive behavior
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < MOBILE_BREAKPOINT;
+      setIsMobile(mobile);
+      // Auto-collapse on mobile if not already collapsed
+      if (mobile && !leftPanelCollapsed) {
+        toggleLeftPanel();
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    // Check on mount
+    if (isMobile && !leftPanelCollapsed) {
+      toggleLeftPanel();
+    }
+    return () => window.removeEventListener('resize', handleResize);
+  }, []); // Run once on mount
 
   if (isLoading) {
     return (

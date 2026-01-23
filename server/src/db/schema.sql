@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE TABLE IF NOT EXISTS messages (
     id TEXT PRIMARY KEY,
     session_id TEXT NOT NULL,
-    role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+    role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
     content TEXT NOT NULL,
     created_at TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
@@ -46,6 +46,28 @@ CREATE TABLE IF NOT EXISTS session_metadata (
     last_pivot TEXT,                -- "Where momentum changed"
     generated_at TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+);
+
+-- Session Context (uploaded files, read-only reference material)
+CREATE TABLE IF NOT EXISTS session_context (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    source_type TEXT NOT NULL CHECK (source_type IN ('file_upload')),
+    source_name TEXT,               -- Original filename
+    content TEXT NOT NULL,          -- Extracted text content
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+);
+
+-- Anchors (user-created bookmarks within conversations)
+CREATE TABLE IF NOT EXISTS anchors (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    message_id TEXT NOT NULL,
+    label TEXT NOT NULL,            -- User-provided label
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+    FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE
 );
 
 -- ============================================

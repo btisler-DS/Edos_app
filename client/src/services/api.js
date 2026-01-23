@@ -99,6 +99,32 @@ export async function getSessionMessages(sessionId) {
 }
 
 /**
+ * Upload a file and add it to an inquiry session
+ * @param {File} file - The file to upload
+ * @param {string} [sessionId] - Optional session ID to add document to
+ * @returns {Promise<{session: object, isNewSession: boolean, context: object}>}
+ */
+export async function uploadFile(file, sessionId = null) {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (sessionId) {
+    formData.append('sessionId', sessionId);
+  }
+
+  const response = await fetch(`${API_BASE}/upload`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Upload failed' }));
+    throw new Error(error.error || 'Upload failed');
+  }
+
+  return response.json();
+}
+
+/**
  * Export session as PDF - triggers download
  * @param {string} sessionId
  */
@@ -130,6 +156,27 @@ export async function exportSessionPdf(sessionId) {
   a.click();
   document.body.removeChild(a);
   window.URL.revokeObjectURL(url);
+}
+
+// ============================================
+// Anchors
+// ============================================
+
+export async function getAnchors(sessionId) {
+  return request(`/sessions/${sessionId}/anchors`);
+}
+
+export async function createAnchor(sessionId, messageId, label) {
+  return request(`/sessions/${sessionId}/anchors`, {
+    method: 'POST',
+    body: JSON.stringify({ messageId, label }),
+  });
+}
+
+export async function deleteAnchor(sessionId, anchorId) {
+  return request(`/sessions/${sessionId}/anchors/${anchorId}`, {
+    method: 'DELETE',
+  });
 }
 
 // ============================================

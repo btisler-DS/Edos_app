@@ -2,6 +2,7 @@ import { getDb } from '../db/connection.js';
 import { generatePrefixedId } from '../utils/ids.js';
 import { now } from '../utils/time.js';
 import { ModelProfileService } from './ModelProfileService.js';
+import { ContextService } from './ContextService.js';
 
 export class SessionService {
   /**
@@ -31,12 +32,24 @@ export class SessionService {
    */
   static getById(id) {
     const db = getDb();
-    return db.prepare(`
+    const session = db.prepare(`
       SELECT s.*, sm.orientation_blurb, sm.unresolved_edge, sm.last_pivot, sm.generated_at as metadata_generated_at
       FROM sessions s
       LEFT JOIN session_metadata sm ON s.id = sm.session_id
       WHERE s.id = ?
     `).get(id);
+
+    if (session) {
+      // Include context documents summary
+      const contexts = ContextService.getBySessionId(id);
+      session.documents = contexts.map(c => ({
+        id: c.id,
+        name: c.source_name,
+        addedAt: c.created_at,
+      }));
+    }
+
+    return session;
   }
 
   /**

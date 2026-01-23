@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { SessionService } from '../services/SessionService.js';
 import { MessageService } from '../services/MessageService.js';
 import { MetadataService } from '../services/MetadataService.js';
+import { ContextService } from '../services/ContextService.js';
 import { getProviderFromEnv } from '../providers/index.js';
 
 const router = Router();
@@ -28,6 +29,14 @@ router.post('/:sessionId/messages', async (req, res) => {
       return res.status(500).json({ error: 'Model profile not found for session' });
     }
 
+    // Get session context (uploaded files) and enhance system prompt
+    const sessionContext = ContextService.getFormattedContext(sessionId);
+    const effectiveProfile = { ...modelProfile };
+    if (sessionContext) {
+      const basePrompt = modelProfile.system_prompt || '';
+      effectiveProfile.system_prompt = `${basePrompt}\n\nThe user has provided the following reference material for this inquiry:\n\n${sessionContext}\n\nUse this material to inform your responses when relevant.`;
+    }
+
     // Add user message
     MessageService.addUserMessage(sessionId, content);
 
@@ -49,11 +58,11 @@ router.post('/:sessionId/messages', async (req, res) => {
     }
 
     // Get provider and stream response
-    const provider = getProviderFromEnv(modelProfile.provider);
+    const provider = getProviderFromEnv(effectiveProfile.provider);
     let fullResponse = '';
 
     try {
-      for await (const chunk of provider.sendMessageStream(contextMessages, modelProfile)) {
+      for await (const chunk of provider.sendMessageStream(contextMessages, effectiveProfile)) {
         fullResponse += chunk;
         res.write(`data: ${JSON.stringify({ content: chunk })}\n\n`);
       }

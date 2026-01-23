@@ -6,6 +6,8 @@ export const useAppStore = create((set, get) => ({
   sessions: [],
   activeSessionId: null,
   messages: [],
+  anchors: [],
+  documents: [], // Attached documents for active session
   activeProfile: null,
   isLoading: false,
   isStreaming: false,
@@ -13,11 +15,13 @@ export const useAppStore = create((set, get) => ({
   error: null,
   contextTruncated: false,
   sessionSortBy: 'last_active', // 'last_active' or 'created'
+  leftPanelCollapsed: false,
 
   // Actions
   setError: (error) => set({ error }),
   clearError: () => set({ error: null }),
   setSessionSortBy: (sortBy) => set({ sessionSortBy: sortBy }),
+  toggleLeftPanel: () => set((state) => ({ leftPanelCollapsed: !state.leftPanelCollapsed })),
 
   // Load initial data
   initialize: async () => {
@@ -46,8 +50,18 @@ export const useAppStore = create((set, get) => ({
   selectSession: async (sessionId) => {
     set({ isLoading: true, error: null, contextTruncated: false });
     try {
-      const messages = await api.getSessionMessages(sessionId);
-      set({ activeSessionId: sessionId, messages, isLoading: false });
+      const [session, messages, anchors] = await Promise.all([
+        api.getSession(sessionId),
+        api.getSessionMessages(sessionId),
+        api.getAnchors(sessionId),
+      ]);
+      set({
+        activeSessionId: sessionId,
+        messages,
+        anchors,
+        documents: session.documents || [],
+        isLoading: false,
+      });
     } catch (error) {
       set({ error: error.message, isLoading: false });
     }
@@ -161,6 +175,35 @@ export const useAppStore = create((set, get) => ({
     try {
       const profile = await api.getActiveProfile();
       set({ activeProfile: profile });
+    } catch (error) {
+      set({ error: error.message });
+    }
+  },
+
+  // Anchors
+  createAnchor: async (messageId, label) => {
+    const { activeSessionId } = get();
+    if (!activeSessionId) return;
+
+    try {
+      const anchor = await api.createAnchor(activeSessionId, messageId, label);
+      set((state) => ({ anchors: [...state.anchors, anchor] }));
+      return anchor;
+    } catch (error) {
+      set({ error: error.message });
+      throw error;
+    }
+  },
+
+  deleteAnchor: async (anchorId) => {
+    const { activeSessionId } = get();
+    if (!activeSessionId) return;
+
+    try {
+      await api.deleteAnchor(activeSessionId, anchorId);
+      set((state) => ({
+        anchors: state.anchors.filter((a) => a.id !== anchorId),
+      }));
     } catch (error) {
       set({ error: error.message });
     }
