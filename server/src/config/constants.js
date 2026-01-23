@@ -20,7 +20,7 @@ export const CONTEXT_LIMITS = {
 
 // Utility models for metadata generation (hardcoded per provider)
 export const UTILITY_MODELS = {
-  anthropic: 'claude-haiku-3-5-20241022',
+  anthropic: 'claude-3-5-haiku-20241022',
   openai: 'gpt-4o-mini',
 };
 
