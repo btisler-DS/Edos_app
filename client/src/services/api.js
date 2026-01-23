@@ -98,6 +98,40 @@ export async function getSessionMessages(sessionId) {
   return request(`/sessions/${sessionId}/messages`);
 }
 
+/**
+ * Export session as PDF - triggers download
+ * @param {string} sessionId
+ */
+export async function exportSessionPdf(sessionId) {
+  const response = await fetch(`${API_BASE}/sessions/${sessionId}/export/pdf`);
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Export failed' }));
+    throw new Error(error.error || 'Export failed');
+  }
+
+  // Get filename from Content-Disposition header
+  const disposition = response.headers.get('Content-Disposition');
+  let filename = 'EDOS_export.pdf';
+  if (disposition) {
+    const match = disposition.match(/filename="([^"]+)"/);
+    if (match) {
+      filename = match[1];
+    }
+  }
+
+  // Convert response to blob and trigger download
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+}
+
 // ============================================
 // Messages (Streaming)
 // ============================================

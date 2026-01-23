@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { SessionService } from '../services/SessionService.js';
 import { MessageService } from '../services/MessageService.js';
+import { PdfExportService } from '../services/PdfExportService.js';
 
 const router = Router();
 
@@ -52,6 +53,32 @@ router.get('/:id/messages', (req, res) => {
     res.json(messages);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/sessions/:id/export/pdf - Export session as PDF
+router.get('/:id/export/pdf', async (req, res) => {
+  try {
+    const session = SessionService.getById(req.params.id);
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    const messages = MessageService.getBySessionId(req.params.id);
+
+    const pdf = await PdfExportService.generatePdf(session, messages);
+    const filename = PdfExportService.generateFilename(session);
+
+    // Ensure pdf is a proper Buffer
+    const pdfBuffer = Buffer.isBuffer(pdf) ? pdf : Buffer.from(pdf);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.end(pdfBuffer);
+  } catch (error) {
+    console.error('PDF export error:', error);
+    res.status(500).json({ error: 'Failed to generate PDF' });
   }
 });
 
