@@ -12,10 +12,12 @@ export const useAppStore = create((set, get) => ({
   streamingContent: '',
   error: null,
   contextTruncated: false,
+  sessionSortBy: 'last_active', // 'last_active' or 'created'
 
   // Actions
   setError: (error) => set({ error }),
   clearError: () => set({ error: null }),
+  setSessionSortBy: (sortBy) => set({ sessionSortBy: sortBy }),
 
   // Load initial data
   initialize: async () => {

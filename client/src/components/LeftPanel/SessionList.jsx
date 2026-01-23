@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useAppStore } from '../../store/appStore';
 import SessionItem from './SessionItem';
 
@@ -12,7 +12,19 @@ const styles = {
 };
 
 function SessionList() {
-  const { sessions } = useAppStore();
+  const { sessions, sessionSortBy } = useAppStore();
+
+  const sortedSessions = useMemo(() => {
+    if (!sessions.length) return sessions;
+
+    return [...sessions].sort((a, b) => {
+      if (sessionSortBy === 'created') {
+        return new Date(b.created_at) - new Date(a.created_at);
+      }
+      // Default: last_active
+      return new Date(b.last_active_at) - new Date(a.last_active_at);
+    });
+  }, [sessions, sessionSortBy]);
 
   if (sessions.length === 0) {
     return (
@@ -25,7 +37,7 @@ function SessionList() {
 
   return (
     <div>
-      {sessions.map((session) => (
+      {sortedSessions.map((session) => (
         <SessionItem key={session.id} session={session} />
       ))}
     </div>

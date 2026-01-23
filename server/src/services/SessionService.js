@@ -6,11 +6,20 @@ import { ModelProfileService } from './ModelProfileService.js';
 export class SessionService {
   /**
    * Get all sessions, ordered by last active
+   * Includes first_assistant_snippet for hover preview fallback
    */
   static getAll() {
     const db = getDb();
     return db.prepare(`
-      SELECT s.*, sm.orientation_blurb, sm.unresolved_edge, sm.last_pivot, sm.generated_at as metadata_generated_at
+      SELECT s.*,
+             sm.orientation_blurb,
+             sm.unresolved_edge,
+             sm.last_pivot,
+             sm.generated_at as metadata_generated_at,
+             (SELECT SUBSTR(content, 1, 200)
+              FROM messages
+              WHERE session_id = s.id AND role = 'assistant'
+              ORDER BY created_at ASC LIMIT 1) as first_assistant_snippet
       FROM sessions s
       LEFT JOIN session_metadata sm ON s.id = sm.session_id
       ORDER BY s.last_active_at DESC
