@@ -9,23 +9,46 @@ const MOBILE_BREAKPOINT = 768;
 const styles = {
   container: {
     display: 'flex',
-    height: '100vh',
-    width: '100vw',
+    height: '100%',
+    width: '100%',
     overflow: 'hidden',
+    position: 'relative',
   },
   main: {
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
     minWidth: 0,
+    height: '100%',
+    overflow: 'hidden',
   },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '12px 20px',
+    padding: '12px 16px',
     borderBottom: '1px solid #2a2a4a',
     background: '#16162a',
+    flexShrink: 0,
+  },
+  headerLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  menuButton: {
+    background: 'transparent',
+    border: 'none',
+    color: '#888',
+    cursor: 'pointer',
+    padding: '8px',
+    fontSize: '20px',
+    lineHeight: 1,
+    borderRadius: '4px',
+    display: 'none',
+  },
+  menuButtonMobile: {
+    display: 'block',
   },
   title: {
     fontSize: '18px',
@@ -95,7 +118,18 @@ function App() {
       <LeftPanel />
       <div style={styles.main}>
         <header style={styles.header}>
-          <span style={styles.title}>EDOS</span>
+          <div style={styles.headerLeft}>
+            {isMobile && leftPanelCollapsed && (
+              <button
+                style={{ ...styles.menuButton, ...styles.menuButtonMobile }}
+                onClick={toggleLeftPanel}
+                title="Open menu"
+              >
+                ☰
+              </button>
+            )}
+            <span style={styles.title}>EDOS</span>
+          </div>
           <ModelProfileIndicator />
         </header>
         <MainWindow />

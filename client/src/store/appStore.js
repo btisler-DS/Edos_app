@@ -103,10 +103,24 @@ export const useAppStore = create((set, get) => ({
 
   // Messages
   sendMessage: async (content) => {
-    const { activeSessionId } = get();
+    let { activeSessionId } = get();
+
+    // Auto-create session if none active (ChatGPT-style UX)
     if (!activeSessionId) {
-      set({ error: 'No active session' });
-      return;
+      try {
+        const session = await api.createSession();
+        const sessions = await api.getSessions();
+        set({
+          sessions,
+          activeSessionId: session.id,
+          messages: [],
+          contextTruncated: false,
+        });
+        activeSessionId = session.id;
+      } catch (error) {
+        set({ error: 'Failed to create session: ' + error.message });
+        return;
+      }
     }
 
     // Add user message optimistically

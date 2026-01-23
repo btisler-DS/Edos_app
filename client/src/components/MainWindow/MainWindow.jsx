@@ -11,25 +11,32 @@ const styles = {
     flexDirection: 'column',
     overflow: 'hidden',
   },
-  empty: {
+  welcome: {
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'center',
     alignItems: 'center',
     color: '#666',
-    gap: '16px',
+    gap: '12px',
+    padding: '20px',
   },
-  emptyTitle: {
-    fontSize: '24px',
+  welcomeTitle: {
+    fontSize: '28px',
     fontWeight: 600,
-    color: '#888',
+    color: '#a5b4fc',
   },
-  emptyText: {
-    fontSize: '15px',
+  welcomeSubtitle: {
+    fontSize: '16px',
+    color: '#888',
     maxWidth: '400px',
     textAlign: 'center',
     lineHeight: '1.6',
+  },
+  welcomeHint: {
+    fontSize: '13px',
+    color: '#555',
+    marginTop: '8px',
   },
   contextWarning: {
     padding: '8px 20px',
@@ -92,20 +99,25 @@ function MainWindow() {
     }
   };
 
+  const hasMessages = messages && messages.length > 0;
+
+  // Welcome state - no active session but show input
   if (!activeSessionId) {
     return (
       <div style={styles.container}>
-        <div style={styles.empty}>
-          <div style={styles.emptyTitle}>EDOS</div>
-          <div style={styles.emptyText}>
-            Select an inquiry from the left panel, or start a new one to begin.
+        <div style={styles.welcome}>
+          <div style={styles.welcomeTitle}>EDOS</div>
+          <div style={styles.welcomeSubtitle}>
+            Your persistent inquiry environment. Start a conversation to begin exploring.
+          </div>
+          <div style={styles.welcomeHint}>
+            Type below to start a new inquiry
           </div>
         </div>
+        <InputArea />
       </div>
     );
   }
-
-  const hasMessages = messages && messages.length > 0;
 
   return (
     <div style={styles.container}>

@@ -3,13 +3,13 @@ import { useAppStore } from '../../store/appStore';
 
 const styles = {
   container: {
-    padding: '16px 20px 24px',
+    padding: '12px 12px 16px',
     borderTop: '1px solid #2a2a4a',
     background: '#16162a',
   },
   form: {
     display: 'flex',
-    gap: '12px',
+    gap: '8px',
     maxWidth: '800px',
     margin: '0 auto',
   },
@@ -36,7 +36,7 @@ const styles = {
     borderColor: '#4f46e5',
   },
   button: {
-    padding: '14px 24px',
+    padding: '12px 16px',
     background: '#4f46e5',
     color: '#fff',
     border: 'none',
@@ -46,6 +46,7 @@ const styles = {
     cursor: 'pointer',
     transition: 'background 0.2s, opacity 0.2s',
     alignSelf: 'flex-end',
+    flexShrink: 0,
   },
   buttonDisabled: {
     opacity: 0.5,

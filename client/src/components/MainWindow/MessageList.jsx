@@ -5,7 +5,8 @@ const styles = {
   container: {
     flex: 1,
     overflow: 'auto',
-    padding: '20px',
+    padding: '12px',
+    WebkitOverflowScrolling: 'touch',
   },
   messageWrapper: {
     position: 'relative',
@@ -214,7 +215,7 @@ function MessageList() {
     return (
       <div style={styles.container}>
         <div style={styles.empty}>
-          Start your inquiry by typing a message below.
+          Ready for your inquiry.
         </div>
       </div>
     );

@@ -74,11 +74,20 @@ function formatDate(dateString) {
   return date.toLocaleDateString();
 }
 
+const MOBILE_BREAKPOINT = 768;
+
 function SessionItem({ session }) {
-  const { activeSessionId, selectSession } = useAppStore();
+  const { activeSessionId, selectSession, leftPanelCollapsed, toggleLeftPanel } = useAppStore();
   const [showPreview, setShowPreview] = useState(false);
   const [previewPos, setPreviewPos] = useState({ top: 0, left: 0 });
+  const [isMobile, setIsMobile] = useState(window.innerWidth < MOBILE_BREAKPOINT);
   const itemRef = useRef(null);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const isActive = activeSessionId === session.id;
   const hasMetadata = session.orientation_blurb || session.unresolved_edge || session.last_pivot;
@@ -92,6 +101,8 @@ function SessionItem({ session }) {
     : null;
 
   const handleMouseEnter = () => {
+    // Skip hover preview on mobile (touch devices)
+    if (isMobile) return;
     if (itemRef.current && hasPreviewContent) {
       const rect = itemRef.current.getBoundingClientRect();
       setPreviewPos({
@@ -106,7 +117,15 @@ function SessionItem({ session }) {
     setShowPreview(false);
   };
 
-  const previewContent = showPreview && hasPreviewContent && createPortal(
+  const handleClick = () => {
+    selectSession(session.id);
+    // Close panel on mobile after selecting
+    if (isMobile && !leftPanelCollapsed) {
+      toggleLeftPanel();
+    }
+  };
+
+  const previewContent = showPreview && hasPreviewContent && !isMobile && createPortal(
     <div style={{ ...styles.preview, top: previewPos.top, left: previewPos.left }}>
       {hasMetadata ? (
         <>
@@ -152,7 +171,7 @@ function SessionItem({ session }) {
           ...(isActive ? styles.itemActive : {}),
           background: isActive ? '#2a2a4a' : (showPreview ? '#1a1a3a' : 'transparent'),
         }}
-        onClick={() => selectSession(session.id)}
+        onClick={handleClick}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >

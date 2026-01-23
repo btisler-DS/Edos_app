@@ -1,24 +1,47 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useAppStore } from '../../store/appStore';
 import { uploadFile } from '../../services/api';
 import SessionList from './SessionList';
+
+const MOBILE_BREAKPOINT = 768;
 
 const styles = {
   panel: {
     width: '300px',
     maxWidth: '80vw',
-    minWidth: '300px',
     height: '100%',
     background: '#12122a',
     borderRight: '1px solid #2a2a4a',
     display: 'flex',
     flexDirection: 'column',
-    transition: 'width 0.2s ease, min-width 0.2s ease, transform 0.2s ease',
+    transition: 'transform 0.2s ease, width 0.2s ease',
     zIndex: 100,
+    flexShrink: 0,
+  },
+  panelMobile: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    zIndex: 200,
+    boxShadow: '4px 0 20px rgba(0,0,0,0.5)',
   },
   panelCollapsed: {
     width: '48px',
-    minWidth: '48px',
+  },
+  panelCollapsedMobile: {
+    transform: 'translateX(-100%)',
+    width: '300px',
+    maxWidth: '80vw',
+  },
+  overlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'rgba(0,0,0,0.5)',
+    zIndex: 150,
   },
   header: {
     padding: '16px',
@@ -107,6 +130,15 @@ const styles = {
 function LeftPanel() {
   const { createSession, isLoading, sessionSortBy, setSessionSortBy, loadSessions, selectSession, activeSessionId, leftPanelCollapsed, toggleLeftPanel } = useAppStore();
   const fileInputRef = useRef(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < MOBILE_BREAKPOINT);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleNewInquiry = async () => {
     try {
@@ -145,7 +177,13 @@ function LeftPanel() {
     e.target.value = '';
   };
 
-  if (leftPanelCollapsed) {
+  // On mobile when collapsed, hide completely (will show hamburger in header)
+  if (leftPanelCollapsed && isMobile) {
+    return null;
+  }
+
+  // Desktop collapsed state
+  if (leftPanelCollapsed && !isMobile) {
     return (
       <div style={{ ...styles.panel, ...styles.panelCollapsed }}>
         <div style={{ ...styles.header, ...styles.headerCollapsed }}>
@@ -163,72 +201,83 @@ function LeftPanel() {
     );
   }
 
+  const panelStyle = {
+    ...styles.panel,
+    ...(isMobile ? styles.panelMobile : {}),
+  };
+
   return (
-    <div style={styles.panel}>
-      <div style={styles.header}>
-        <button
-          style={styles.collapseButton}
-          onClick={toggleLeftPanel}
-          title="Collapse panel"
-          onMouseOver={(e) => e.target.style.color = '#ccc'}
-          onMouseOut={(e) => e.target.style.color = '#666'}
-        >
-          «
-        </button>
-        <span style={styles.title}>Inquiries</span>
-        <div style={styles.headerButtons}>
+    <>
+      {/* Overlay for mobile */}
+      {isMobile && (
+        <div style={styles.overlay} onClick={toggleLeftPanel} />
+      )}
+      <div style={panelStyle}>
+        <div style={styles.header}>
           <button
-            style={styles.uploadButton}
-            onClick={handleUploadClick}
-            disabled={isLoading}
-            title="Upload PDF, TXT, or MD file"
-            onMouseOver={(e) => { e.target.style.borderColor = '#4f46e5'; e.target.style.color = '#ccc'; }}
-            onMouseOut={(e) => { e.target.style.borderColor = '#3a3a5a'; e.target.style.color = '#888'; }}
+            style={styles.collapseButton}
+            onClick={toggleLeftPanel}
+            title="Collapse panel"
+            onMouseOver={(e) => e.target.style.color = '#ccc'}
+            onMouseOut={(e) => e.target.style.color = '#666'}
           >
-            Upload
+            «
+          </button>
+          <span style={styles.title}>Inquiries</span>
+          <div style={styles.headerButtons}>
+            <button
+              style={styles.uploadButton}
+              onClick={handleUploadClick}
+              disabled={isLoading}
+              title="Upload PDF, TXT, or MD file"
+              onMouseOver={(e) => { e.target.style.borderColor = '#4f46e5'; e.target.style.color = '#ccc'; }}
+              onMouseOut={(e) => { e.target.style.borderColor = '#3a3a5a'; e.target.style.color = '#888'; }}
+            >
+              Upload
+            </button>
+            <button
+              style={styles.newButton}
+              onClick={handleNewInquiry}
+              disabled={isLoading}
+              onMouseOver={(e) => e.target.style.background = '#4338ca'}
+              onMouseOut={(e) => e.target.style.background = '#4f46e5'}
+            >
+              New
+            </button>
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.txt,.md"
+            onChange={handleFileChange}
+            style={styles.hiddenInput}
+          />
+        </div>
+        <div style={styles.sortBar}>
+          <button
+            style={{
+              ...styles.sortOption,
+              ...(sessionSortBy === 'last_active' ? styles.sortOptionActive : {}),
+            }}
+            onClick={() => setSessionSortBy('last_active')}
+          >
+            Recent
           </button>
           <button
-            style={styles.newButton}
-            onClick={handleNewInquiry}
-            disabled={isLoading}
-            onMouseOver={(e) => e.target.style.background = '#4338ca'}
-            onMouseOut={(e) => e.target.style.background = '#4f46e5'}
+            style={{
+              ...styles.sortOption,
+              ...(sessionSortBy === 'created' ? styles.sortOptionActive : {}),
+            }}
+            onClick={() => setSessionSortBy('created')}
           >
-            New
+            Created
           </button>
         </div>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".pdf,.txt,.md"
-          onChange={handleFileChange}
-          style={styles.hiddenInput}
-        />
+        <div style={styles.list}>
+          <SessionList />
+        </div>
       </div>
-      <div style={styles.sortBar}>
-        <button
-          style={{
-            ...styles.sortOption,
-            ...(sessionSortBy === 'last_active' ? styles.sortOptionActive : {}),
-          }}
-          onClick={() => setSessionSortBy('last_active')}
-        >
-          Recent
-        </button>
-        <button
-          style={{
-            ...styles.sortOption,
-            ...(sessionSortBy === 'created' ? styles.sortOptionActive : {}),
-          }}
-          onClick={() => setSessionSortBy('created')}
-        >
-          Created
-        </button>
-      </div>
-      <div style={styles.list}>
-        <SessionList />
-      </div>
-    </div>
+    </>
   );
 }
 
