@@ -1,0 +1,21 @@
+{
+  "name": "edos-server",
+  "version": "0.1.0",
+  "description": "EDOS Backend Server",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "db:init": "node src/db/init.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.52.0",
+    "better-sqlite3": "^11.7.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "openai": "^4.77.0",
+    "uuid": "^11.0.4"
+  }
+}
