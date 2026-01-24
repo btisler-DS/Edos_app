@@ -1,0 +1,105 @@
+{
+  "user_id": "bruce_tisler",
+  "version": "1.0",
+  "created_at": "2026-01-24",
+  "intent": "Serve as a reflective, inspectable description of the user's inquiry qualities, research style, and learning patterns. This file must never be auto-injected into system prompts or used for agentic behavior.",
+
+  "personal_information": {
+    "name": "Bruce Tisler",
+    "birth_year": 1964,
+    "email": "brucetisler@gmail.com",
+    "phone_number": "+16617471340",
+    "online_profiles": {
+      "medium": "https://medium.com/@brucetisler",
+      "linkedin": "https://www.linkedin.com/in/bruce-tisler/",
+      "orcid": "https://orcid.org/0009-0009-6344-5334"
+    }
+  },
+
+  "core_qualities": {
+    "intellectual_orientation": [
+      "Inquiry-first thinker",
+      "Systems-oriented",
+      "Epistemically cautious",
+      "Structure-sensitive",
+      "Pattern-seeking across time"
+    ],
+    "values": [
+      "Explicit reasoning over implicit inference",
+      "User agency over automation",
+      "Reversibility of decisions",
+      "Honesty about uncertainty",
+      "Preservation of original thought artifacts"
+    ],
+    "non_goals": [
+      "Being persuaded by fluency alone",
+      "Having intent inferred by systems",
+      "Delegating judgment to opaque automation"
+    ]
+  },
+
+  "research_style": {
+    "primary_mode": "Question-driven exploration",
+    "characteristics": [
+      "Research begins with a question, not a hypothesis",
+      "Ideas are tested through dialogue, not linear exposition",
+      "Concepts recur over long time spans before resolving",
+      "Progress often happens through re-entry rather than completion"
+    ],
+    "materials_used": [
+      "Long-form conversations",
+      "Primary research papers",
+      "Reflective writing",
+      "AI-assisted dialogue",
+      "Archival revisiting of prior work"
+    ],
+    "failure_modes_to_avoid": [
+      "Loss of context across time",
+      "Forced summaries that erase nuance",
+      "Personality drift imposed by tools",
+      "Implicit continuity that cannot be inspected"
+    ]
+  },
+
+  "learning_preferences": {
+    "learning_mode": [
+      "Iterative",
+      "Dialogic",
+      "Comparative",
+      "Longitudinal"
+    ],
+    "strengths": [
+      "Recognizing structural patterns",
+      "Connecting ideas across domains",
+      "Detecting conceptual drift",
+      "Identifying when a question has changed shape"
+    ],
+    "challenges": [
+      "Recall after long time gaps",
+      "Navigating fragmented tool ecosystems",
+      "Reconstructing prior inquiry states without artifacts"
+    ],
+    "support_needs": [
+      "Explicit re-entry cues",
+      "Ability to revisit raw material",
+      "Separation of structure from personality",
+      "Tools that surface relationships without asserting meaning"
+    ]
+  },
+
+  "relationship_to_edos": {
+    "role_of_system": "Inquiry environment, not assistant",
+    "acceptable_behaviors": [
+      "Responding to explicitly assembled context",
+      "Reasoning over provided materials",
+      "Remaining silent when context is absent",
+      "Making structure visible without imposing interpretation"
+    ],
+    "unacceptable_behaviors": [
+      "Assuming continuity not explicitly declared",
+      "Injecting context without permission",
+      "Inferring intent from patterns",
+      "Acting on memory that was not provided"
+    ]
+  }
+}
