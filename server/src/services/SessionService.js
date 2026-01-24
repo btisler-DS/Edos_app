@@ -4,6 +4,7 @@ import { now } from '../utils/time.js';
 import { ModelProfileService } from './ModelProfileService.js';
 import { ContextService } from './ContextService.js';
 import { ProjectService } from './ProjectService.js';
+import { MessageService } from './MessageService.js';
 
 export class SessionService {
   /**
@@ -46,6 +47,7 @@ export class SessionService {
       session.documents = contexts.map(c => ({
         id: c.id,
         name: c.source_name,
+        type: c.source_type,
         addedAt: c.created_at,
       }));
     }
@@ -56,8 +58,9 @@ export class SessionService {
   /**
    * Create a new session using the active model profile
    * Auto-assigns to the default project (General)
+   * @param {string[]} [contextFromSessions] - Optional array of session IDs to assemble context from
    */
-  static create() {
+  static create(contextFromSessions = null) {
     const db = getDb();
     const activeProfile = ModelProfileService.getActive();
 
@@ -76,6 +79,38 @@ export class SessionService {
       INSERT INTO sessions (id, model_profile_id, project_id, user_id, created_at, updated_at, last_active_at)
       VALUES (?, ?, ?, 'default', ?, ?, ?)
     `).run(id, activeProfile.id, projectId, timestamp, timestamp, timestamp);
+
+    // If contextFromSessions is provided, assemble context from those sessions
+    if (contextFromSessions && Array.isArray(contextFromSessions) && contextFromSessions.length > 0) {
+      const contextParts = [];
+      const sessionTitles = [];
+
+      for (const sourceSessionId of contextFromSessions) {
+        const sourceSession = this.getById(sourceSessionId);
+        if (!sourceSession) continue;
+
+        const messages = MessageService.getBySessionId(sourceSessionId);
+        // Get first few exchanges (up to 4 messages: 2 user + 2 assistant)
+        const previewMessages = messages
+          .filter(m => m.role !== 'system')
+          .slice(0, 4);
+
+        if (previewMessages.length === 0) continue;
+
+        const sessionTitle = sourceSession.title || 'Untitled Inquiry';
+        sessionTitles.push(sessionTitle);
+        const formattedMessages = previewMessages
+          .map(m => `${m.role.toUpperCase()}: ${m.content.length > 500 ? m.content.substring(0, 500) + '...' : m.content}`)
+          .join('\n\n');
+
+        contextParts.push(`--- From: ${sessionTitle} ---\n${formattedMessages}`);
+      }
+
+      if (contextParts.length > 0) {
+        const assembledContext = `Context from prior inquiries (for reference, not generated):\n\n${contextParts.join('\n\n')}`;
+        ContextService.addAssembledContext(id, assembledContext, sessionTitles);
+      }
+    }
 
     return this.getById(id);
   }

@@ -151,6 +151,48 @@ const styles = {
     flex: 1,
     overflow: 'auto',
   },
+  assemblyBar: {
+    padding: '8px 16px',
+    borderBottom: '1px solid #1a1a3a',
+    display: 'flex',
+    gap: '8px',
+    alignItems: 'center',
+  },
+  assembleButton: {
+    padding: '6px 12px',
+    background: 'transparent',
+    border: '1px solid #3a3a5a',
+    borderRadius: '4px',
+    color: '#888',
+    fontSize: '12px',
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+  },
+  assembleButtonActive: {
+    padding: '6px 12px',
+    background: '#4f46e5',
+    border: '1px solid #4f46e5',
+    borderRadius: '4px',
+    color: '#fff',
+    fontSize: '12px',
+    cursor: 'pointer',
+  },
+  composeButton: {
+    flex: 1,
+    padding: '8px 12px',
+    background: '#059669',
+    border: 'none',
+    borderRadius: '4px',
+    color: '#fff',
+    fontSize: '12px',
+    fontWeight: 500,
+    cursor: 'pointer',
+    transition: 'background 0.15s',
+  },
+  selectionCount: {
+    fontSize: '12px',
+    color: '#888',
+  },
 };
 
 function LeftPanel() {
@@ -169,6 +211,10 @@ function LeftPanel() {
     setProjectFilter,
     filterHasDocuments,
     setFilterHasDocuments,
+    contextAssemblyMode,
+    setContextAssemblyMode,
+    selectedForAssembly,
+    composeFromAssembly,
   } = useAppStore();
   const fileInputRef = useRef(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < MOBILE_BREAKPOINT);
@@ -347,6 +393,41 @@ function LeftPanel() {
             />
             Docs
           </label>
+        </div>
+        <div style={styles.assemblyBar}>
+          <button
+            style={contextAssemblyMode ? styles.assembleButtonActive : styles.assembleButton}
+            onClick={() => setContextAssemblyMode(!contextAssemblyMode)}
+            onMouseOver={(e) => {
+              if (!contextAssemblyMode) {
+                e.target.style.borderColor = '#4f46e5';
+                e.target.style.color = '#ccc';
+              }
+            }}
+            onMouseOut={(e) => {
+              if (!contextAssemblyMode) {
+                e.target.style.borderColor = '#3a3a5a';
+                e.target.style.color = '#888';
+              }
+            }}
+          >
+            {contextAssemblyMode ? 'Cancel' : 'Assemble'}
+          </button>
+          {contextAssemblyMode && selectedForAssembly.length > 0 && (
+            <span style={styles.selectionCount}>
+              {selectedForAssembly.length} selected
+            </span>
+          )}
+          {contextAssemblyMode && selectedForAssembly.length >= 2 && (
+            <button
+              style={styles.composeButton}
+              onClick={composeFromAssembly}
+              onMouseOver={(e) => e.target.style.background = '#047857'}
+              onMouseOut={(e) => e.target.style.background = '#059669'}
+            >
+              Compose New Inquiry
+            </button>
+          )}
         </div>
         <div style={styles.list}>
           <SessionList />

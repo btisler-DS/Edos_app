@@ -118,9 +118,10 @@ export async function getSession(id) {
   return request(`/sessions/${id}`);
 }
 
-export async function createSession() {
+export async function createSession(options = {}) {
   return request('/sessions', {
     method: 'POST',
+    body: JSON.stringify(options),
   });
 }
 
@@ -220,6 +221,18 @@ export async function deleteAnchor(sessionId, anchorId) {
   return request(`/sessions/${sessionId}/anchors/${anchorId}`, {
     method: 'DELETE',
   });
+}
+
+// ============================================
+// Similarity / Semantic Search
+// ============================================
+
+export async function getSimilarSessions(sessionId, limit = 5) {
+  return request(`/similarity/sessions/${sessionId}?limit=${limit}`);
+}
+
+export async function getSimilarDocuments(sessionId, limit = 5) {
+  return request(`/similarity/documents/${sessionId}?limit=${limit}`);
 }
 
 // ============================================

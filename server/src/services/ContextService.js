@@ -20,6 +20,23 @@ export class ContextService {
   }
 
   /**
+   * Add assembled context from prior sessions
+   */
+  static addAssembledContext(sessionId, content, sourceSessionTitles) {
+    const db = getDb();
+    const id = generatePrefixedId('ctx');
+    const timestamp = now();
+    const sourceName = `Prior Inquiries: ${sourceSessionTitles.join(', ')}`;
+
+    db.prepare(`
+      INSERT INTO session_context (id, session_id, source_type, source_name, content, created_at)
+      VALUES (?, ?, 'assembled_sessions', ?, ?, ?)
+    `).run(id, sessionId, sourceName, content, timestamp);
+
+    return this.getById(id);
+  }
+
+  /**
    * Get context by ID
    */
   static getById(id) {
@@ -50,6 +67,11 @@ export class ContextService {
     }
 
     return contexts.map(ctx => {
+      if (ctx.source_type === 'assembled_sessions') {
+        // Assembled context already formatted
+        return ctx.content;
+      }
+      // File upload context
       const header = `--- Reference Document: ${ctx.source_name} ---`;
       return `${header}\n\n${ctx.content}\n\n--- End of ${ctx.source_name} ---`;
     }).join('\n\n');

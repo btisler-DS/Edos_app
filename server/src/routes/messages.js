@@ -29,7 +29,7 @@ router.post('/:sessionId/messages', async (req, res) => {
       return res.status(500).json({ error: 'Model profile not found for session' });
     }
 
-    // Get session context (uploaded files) and enhance system prompt
+    // Get session context (uploaded files, assembled sessions) and enhance system prompt
     const sessionContext = ContextService.getFormattedContext(sessionId);
     const effectiveProfile = { ...modelProfile };
     if (sessionContext) {

@@ -56,6 +56,23 @@ const styles = {
     color: '#666',
     marginBottom: '4px',
   },
+  itemWithCheckbox: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '8px',
+  },
+  assemblyCheckbox: {
+    marginTop: '4px',
+    width: '16px',
+    height: '16px',
+    accentColor: '#4f46e5',
+    cursor: 'pointer',
+    flexShrink: 0,
+  },
+  itemContent: {
+    flex: 1,
+    minWidth: 0,
+  },
 };
 
 function formatDate(dateString) {
@@ -77,7 +94,15 @@ function formatDate(dateString) {
 const MOBILE_BREAKPOINT = 768;
 
 function SessionItem({ session }) {
-  const { activeSessionId, selectSession, leftPanelCollapsed, toggleLeftPanel } = useAppStore();
+  const {
+    activeSessionId,
+    selectSession,
+    leftPanelCollapsed,
+    toggleLeftPanel,
+    contextAssemblyMode,
+    selectedForAssembly,
+    toggleSessionForAssembly,
+  } = useAppStore();
   const [showPreview, setShowPreview] = useState(false);
   const [previewPos, setPreviewPos] = useState({ top: 0, left: 0 });
   const [isMobile, setIsMobile] = useState(window.innerWidth < MOBILE_BREAKPOINT);
@@ -118,12 +143,24 @@ function SessionItem({ session }) {
   };
 
   const handleClick = () => {
-    selectSession(session.id);
-    // Close panel on mobile after selecting
-    if (isMobile && !leftPanelCollapsed) {
-      toggleLeftPanel();
+    if (contextAssemblyMode) {
+      // In assembly mode, clicking toggles selection
+      toggleSessionForAssembly(session.id);
+    } else {
+      selectSession(session.id);
+      // Close panel on mobile after selecting
+      if (isMobile && !leftPanelCollapsed) {
+        toggleLeftPanel();
+      }
     }
   };
+
+  const handleCheckboxChange = (e) => {
+    e.stopPropagation();
+    toggleSessionForAssembly(session.id);
+  };
+
+  const isSelectedForAssembly = selectedForAssembly.includes(session.id);
 
   const previewContent = showPreview && hasPreviewContent && !isMobile && createPortal(
     <div style={{ ...styles.preview, top: previewPos.top, left: previewPos.left }}>
@@ -162,6 +199,14 @@ function SessionItem({ session }) {
     document.body
   );
 
+  const itemBackground = isSelectedForAssembly
+    ? '#2a2a5a'
+    : isActive
+      ? '#2a2a4a'
+      : showPreview
+        ? '#1a1a3a'
+        : 'transparent';
+
   return (
     <>
       <div
@@ -169,18 +214,39 @@ function SessionItem({ session }) {
         style={{
           ...styles.item,
           ...(isActive ? styles.itemActive : {}),
-          background: isActive ? '#2a2a4a' : (showPreview ? '#1a1a3a' : 'transparent'),
+          background: itemBackground,
         }}
         onClick={handleClick}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        <div style={styles.title}>
-          {session.title || 'Untitled Inquiry'}
-        </div>
-        <div style={styles.meta}>
-          {formatDate(session.last_active_at)}
-        </div>
+        {contextAssemblyMode ? (
+          <div style={styles.itemWithCheckbox}>
+            <input
+              type="checkbox"
+              style={styles.assemblyCheckbox}
+              checked={isSelectedForAssembly}
+              onChange={handleCheckboxChange}
+            />
+            <div style={styles.itemContent}>
+              <div style={styles.title}>
+                {session.title || 'Untitled Inquiry'}
+              </div>
+              <div style={styles.meta}>
+                {formatDate(session.last_active_at)}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div style={styles.title}>
+              {session.title || 'Untitled Inquiry'}
+            </div>
+            <div style={styles.meta}>
+              {formatDate(session.last_active_at)}
+            </div>
+          </>
+        )}
       </div>
       {previewContent}
     </>

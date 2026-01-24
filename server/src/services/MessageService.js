@@ -18,12 +18,13 @@ export class MessageService {
 
   /**
    * Get messages formatted for LLM context (with truncation if needed)
+   * Filters out system messages as they're for UI display only
    */
   static getContextMessages(sessionId, limit = MAX_CONTEXT_MESSAGES) {
     const db = getDb();
     const messages = db.prepare(`
       SELECT role, content FROM messages
-      WHERE session_id = ?
+      WHERE session_id = ? AND role != 'system'
       ORDER BY created_at ASC
     `).all(sessionId);
 

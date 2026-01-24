@@ -3,6 +3,7 @@ import { useAppStore } from '../../store/appStore';
 import { exportSessionPdf } from '../../services/api';
 import MessageList from './MessageList';
 import InputArea from './InputArea';
+import RelatedSessions from './RelatedSessions';
 
 const styles = {
   container: {
@@ -78,10 +79,43 @@ const styles = {
     opacity: 0.5,
     cursor: 'not-allowed',
   },
+  contextBar: {
+    padding: '8px 16px',
+    background: '#1a1a2e',
+    borderBottom: '1px solid #2a2a4a',
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+    alignItems: 'center',
+  },
+  contextLabel: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#666',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+    marginRight: '4px',
+  },
+  contextItem: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    padding: '4px 10px',
+    borderRadius: '12px',
+    fontSize: '12px',
+  },
+  contextItemFile: {
+    background: '#1e3a5f',
+    color: '#93c5fd',
+  },
+  contextItemAssembled: {
+    background: '#3b1f5e',
+    color: '#c4b5fd',
+  },
 };
 
 function MainWindow() {
-  const { activeSessionId, contextTruncated, messages } = useAppStore();
+  const { activeSessionId, contextTruncated, messages, documents } = useAppStore();
   const [exporting, setExporting] = useState(false);
   const [exportHover, setExportHover] = useState(false);
 
@@ -143,6 +177,24 @@ function MainWindow() {
           <span>Context truncated due to length. Oldest messages may not be visible to the model.</span>
         </div>
       )}
+      {documents && documents.length > 0 && (
+        <div style={styles.contextBar}>
+          <span style={styles.contextLabel}>Context:</span>
+          {documents.map((doc) => (
+            <span
+              key={doc.id}
+              style={{
+                ...styles.contextItem,
+                ...(doc.type === 'assembled_sessions' ? styles.contextItemAssembled : styles.contextItemFile),
+              }}
+              title={doc.name}
+            >
+              {doc.type === 'assembled_sessions' ? '○' : '◇'} {doc.name.length > 30 ? doc.name.slice(0, 30) + '...' : doc.name}
+            </span>
+          ))}
+        </div>
+      )}
+      <RelatedSessions />
       <MessageList />
       <InputArea />
     </div>

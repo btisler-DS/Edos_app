@@ -22,6 +22,14 @@ export const useAppStore = create((set, get) => ({
   selectedProjectFilter: null, // null = all, 'unassigned', or project_id
   filterHasDocuments: false,
 
+  // Related Sessions (semantic similarity)
+  relatedSessions: [],
+  relatedSessionsLoading: false,
+
+  // Context Assembly Mode
+  contextAssemblyMode: false,
+  selectedForAssembly: [], // Array of session IDs
+
   // Actions
   setError: (error) => set({ error }),
   clearError: () => set({ error: null }),
@@ -129,6 +137,8 @@ export const useAppStore = create((set, get) => ({
         documents: session.documents || [],
         isLoading: false,
       });
+      // Load related sessions in background (non-blocking)
+      get().loadRelatedSessions(sessionId);
     } catch (error) {
       set({ error: error.message, isLoading: false });
     }
@@ -287,6 +297,56 @@ export const useAppStore = create((set, get) => ({
       }));
     } catch (error) {
       set({ error: error.message });
+    }
+  },
+
+  // Related Sessions (semantic similarity)
+  loadRelatedSessions: async (sessionId) => {
+    set({ relatedSessionsLoading: true });
+    try {
+      const results = await api.getSimilarSessions(sessionId, 5);
+      set({ relatedSessions: results, relatedSessionsLoading: false });
+    } catch (error) {
+      // Silently fail - related sessions are optional
+      console.error('Failed to load related sessions:', error);
+      set({ relatedSessions: [], relatedSessionsLoading: false });
+    }
+  },
+
+  clearRelatedSessions: () => set({ relatedSessions: [], relatedSessionsLoading: false }),
+
+  // Context Assembly Mode
+  setContextAssemblyMode: (enabled) => set({
+    contextAssemblyMode: enabled,
+    selectedForAssembly: [], // Clear on toggle
+  }),
+
+  toggleSessionForAssembly: (sessionId) => set((state) => ({
+    selectedForAssembly: state.selectedForAssembly.includes(sessionId)
+      ? state.selectedForAssembly.filter((id) => id !== sessionId)
+      : [...state.selectedForAssembly, sessionId],
+  })),
+
+  clearAssemblySelection: () => set({ selectedForAssembly: [] }),
+
+  composeFromAssembly: async () => {
+    const { selectedForAssembly } = get();
+    if (selectedForAssembly.length < 2) return;
+
+    set({ isLoading: true });
+    try {
+      const session = await api.createSession({ contextFromSessions: selectedForAssembly });
+      // Reset assembly mode first
+      set({
+        contextAssemblyMode: false,
+        selectedForAssembly: [],
+      });
+      // Then properly select the new session (this loads all session data)
+      await get().selectSession(session.id);
+      // Refresh sessions list
+      await get().loadSessions();
+    } catch (error) {
+      set({ error: error.message, isLoading: false });
     }
   },
 }));

@@ -9,9 +9,9 @@ import { EmbeddingService } from '../services/EmbeddingService.js';
 import { EmbeddingStore } from '../services/EmbeddingStore.js';
 import { chunkText } from '../utils/chunking.js';
 
-// pdf-parse is CommonJS only, use createRequire
+// pdf-parse v2.x uses a class-based API
 const require = createRequire(import.meta.url);
-const pdfParse = require('pdf-parse');
+const { PDFParse } = require('pdf-parse');
 
 const router = Router();
 
@@ -79,8 +79,10 @@ async function extractContent(file) {
   const ext = file.originalname.toLowerCase().slice(file.originalname.lastIndexOf('.'));
 
   if (ext === '.pdf') {
-    const data = await pdfParse(file.buffer);
-    return data.text;
+    const parser = new PDFParse({ data: file.buffer });
+    await parser.load();
+    const result = await parser.getText();
+    return result.text || '';
   }
 
   // TXT and MD files - just decode the buffer

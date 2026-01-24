@@ -13,6 +13,9 @@ export function runMigrations() {
   // Migration: Add semantic memory tables (embeddings, document_chunks, lenses)
   migrateSemanticMemory(db);
 
+  // Migration: Update session_context to allow assembled_sessions source_type
+  migrateSessionContextSourceType(db);
+
   // Check if messages table has the old constraint (only user/assistant)
   // by trying to insert a system message
   try {
@@ -195,5 +198,55 @@ function migrateSemanticMemory(db) {
     }
   } catch (error) {
     console.error('Semantic memory migration error:', error.message);
+  }
+}
+
+/**
+ * Migration: Update session_context CHECK constraint to allow assembled_sessions
+ */
+function migrateSessionContextSourceType(db) {
+  try {
+    // Check current constraint by trying to see the table structure
+    // SQLite doesn't allow altering CHECK constraints, so we need to recreate the table
+    const tableInfo = db.prepare("PRAGMA table_info(session_context)").all();
+    if (tableInfo.length === 0) return; // Table doesn't exist yet
+
+    // Check if we need to migrate by testing if assembled_sessions is allowed
+    try {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS session_context_new (
+          id TEXT PRIMARY KEY,
+          session_id TEXT NOT NULL,
+          source_type TEXT NOT NULL CHECK (source_type IN ('file_upload', 'assembled_sessions')),
+          source_name TEXT NOT NULL,
+          content TEXT NOT NULL,
+          created_at TEXT DEFAULT (datetime('now')),
+          FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+        )
+      `);
+
+      // Copy existing data
+      db.exec(`
+        INSERT OR IGNORE INTO session_context_new (id, session_id, source_type, source_name, content, created_at)
+        SELECT id, session_id, source_type, source_name, content, created_at FROM session_context
+      `);
+
+      // Drop old table and rename new
+      db.exec('DROP TABLE session_context');
+      db.exec('ALTER TABLE session_context_new RENAME TO session_context');
+
+      // Recreate index
+      db.exec('CREATE INDEX IF NOT EXISTS idx_context_session ON session_context(session_id)');
+
+      console.log('Migration: Updated session_context to allow assembled_sessions source_type');
+    } catch (e) {
+      if (e.message.includes('already exists') || e.message.includes('no such table')) {
+        // Migration already complete or table doesn't need migration
+      } else {
+        throw e;
+      }
+    }
+  } catch (error) {
+    console.error('Session context migration error:', error.message);
   }
 }

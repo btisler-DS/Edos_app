@@ -42,7 +42,8 @@ router.get('/:id', (req, res) => {
 // POST /api/sessions - Create new session (New Inquiry)
 router.post('/', (req, res) => {
   try {
-    const session = SessionService.create();
+    const { contextFromSessions } = req.body || {};
+    const session = SessionService.create(contextFromSessions);
     res.status(201).json(session);
   } catch (error) {
     if (error.message.includes('No active model profile')) {
