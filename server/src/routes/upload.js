@@ -27,15 +27,16 @@ const upload = multer({
       'text/plain',
       'text/markdown',
       'text/x-markdown',
+      'application/json',
     ];
-    const allowedExtensions = ['.pdf', '.txt', '.md'];
+    const allowedExtensions = ['.pdf', '.txt', '.md', '.json'];
 
     const ext = file.originalname.toLowerCase().slice(file.originalname.lastIndexOf('.'));
 
     if (allowedTypes.includes(file.mimetype) || allowedExtensions.includes(ext)) {
       cb(null, true);
     } else {
-      cb(new Error('Only PDF, TXT, and MD files are allowed'));
+      cb(new Error('Only PDF, TXT, MD, and JSON files are allowed'));
     }
   },
 });
