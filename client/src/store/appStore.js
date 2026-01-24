@@ -388,4 +388,23 @@ export const useAppStore = create((set, get) => ({
       set({ error: error.message, isLoading: false });
     }
   },
+
+  // Import
+  importStatus: null, // { importing: boolean, result: object | null }
+
+  importOpenAIBackup: async (file) => {
+    set({ importStatus: { importing: true, result: null } });
+    try {
+      const result = await api.importOpenAIBackup(file);
+      set({ importStatus: { importing: false, result } });
+      // Refresh sessions list to show imported sessions
+      await get().loadSessions();
+      return result;
+    } catch (error) {
+      set({ importStatus: { importing: false, result: { error: error.message } }, error: error.message });
+      throw error;
+    }
+  },
+
+  clearImportStatus: () => set({ importStatus: null }),
 }));

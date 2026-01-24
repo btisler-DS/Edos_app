@@ -193,6 +193,37 @@ const styles = {
     fontSize: '12px',
     color: '#888',
   },
+  importButton: {
+    background: 'transparent',
+    color: '#888',
+    border: '1px solid #3a3a5a',
+    padding: '6px 10px',
+    borderRadius: '4px',
+    fontSize: '12px',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+  },
+  importStatus: {
+    padding: '8px 16px',
+    background: '#1a2a3a',
+    borderBottom: '1px solid #2a3a4a',
+    fontSize: '12px',
+    color: '#7dd3fc',
+  },
+  importError: {
+    padding: '8px 16px',
+    background: '#2a1a1a',
+    borderBottom: '1px solid #4a2a2a',
+    fontSize: '12px',
+    color: '#fca5a5',
+  },
+  importSuccess: {
+    padding: '8px 16px',
+    background: '#1a2a1a',
+    borderBottom: '1px solid #2a4a2a',
+    fontSize: '12px',
+    color: '#86efac',
+  },
 };
 
 function LeftPanel() {
@@ -215,8 +246,12 @@ function LeftPanel() {
     setContextAssemblyMode,
     selectedForAssembly,
     composeFromAssembly,
+    importStatus,
+    importOpenAIBackup,
+    clearImportStatus,
   } = useAppStore();
   const fileInputRef = useRef(null);
+  const importInputRef = useRef(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < MOBILE_BREAKPOINT);
 
   useEffect(() => {
@@ -274,6 +309,24 @@ function LeftPanel() {
   const handleDocsFilterChange = (e) => {
     setFilterHasDocuments(e.target.checked);
     setTimeout(() => loadSessions(), 0);
+  };
+
+  const handleImportClick = () => {
+    importInputRef.current?.click();
+  };
+
+  const handleImportChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      await importOpenAIBackup(file);
+    } catch (error) {
+      console.error('Import failed:', error);
+    }
+
+    // Reset input
+    e.target.value = '';
   };
 
   // On mobile when collapsed, hide completely (will show hamburger in header)
@@ -347,11 +400,33 @@ function LeftPanel() {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".pdf,.txt,.md"
+            accept=".pdf,.txt,.md,.json"
             onChange={handleFileChange}
             style={styles.hiddenInput}
           />
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".json"
+            onChange={handleImportChange}
+            style={styles.hiddenInput}
+          />
         </div>
+        {importStatus && (
+          <div style={
+            importStatus.importing ? styles.importStatus :
+            importStatus.result?.error ? styles.importError :
+            styles.importSuccess
+          }>
+            {importStatus.importing ? (
+              'Importing conversations...'
+            ) : importStatus.result?.error ? (
+              <>Error: {importStatus.result.error} <button onClick={clearImportStatus} style={{ marginLeft: 8, cursor: 'pointer' }}>×</button></>
+            ) : (
+              <>{importStatus.result?.message} <button onClick={clearImportStatus} style={{ marginLeft: 8, cursor: 'pointer' }}>×</button></>
+            )}
+          </div>
+        )}
         <div style={styles.sortBar}>
           <button
             style={{
@@ -412,6 +487,16 @@ function LeftPanel() {
             }}
           >
             {contextAssemblyMode ? 'Cancel' : 'Assemble'}
+          </button>
+          <button
+            style={styles.importButton}
+            onClick={handleImportClick}
+            disabled={importStatus?.importing}
+            title="Import OpenAI conversations.json backup"
+            onMouseOver={(e) => { e.target.style.borderColor = '#4f46e5'; e.target.style.color = '#ccc'; }}
+            onMouseOut={(e) => { e.target.style.borderColor = '#3a3a5a'; e.target.style.color = '#888'; }}
+          >
+            {importStatus?.importing ? 'Importing...' : 'Import'}
           </button>
           {contextAssemblyMode && selectedForAssembly.length > 0 && (
             <span style={styles.selectionCount}>

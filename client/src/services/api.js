@@ -358,3 +358,29 @@ export async function sendMessage(sessionId, content, { onChunk, onDone, onError
     onError?.(error);
   }
 }
+
+// ============================================
+// Import (Bulk Conversation Import)
+// ============================================
+
+/**
+ * Import OpenAI conversations.json backup
+ * @param {File} file - The conversations.json file
+ * @returns {Promise<{success: boolean, imported: number, skipped: number, totalMessages: number, message: string}>}
+ */
+export async function importOpenAIBackup(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${API_BASE}/import/openai`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Import failed' }));
+    throw new Error(error.error || 'Import failed');
+  }
+
+  return response.json();
+}
