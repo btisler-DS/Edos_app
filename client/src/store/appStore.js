@@ -17,30 +17,97 @@ export const useAppStore = create((set, get) => ({
   sessionSortBy: 'last_active', // 'last_active' or 'created'
   leftPanelCollapsed: false,
 
+  // Projects
+  projects: [],
+  selectedProjectFilter: null, // null = all, 'unassigned', or project_id
+  filterHasDocuments: false,
+
   // Actions
   setError: (error) => set({ error }),
   clearError: () => set({ error: null }),
   setSessionSortBy: (sortBy) => set({ sessionSortBy: sortBy }),
   toggleLeftPanel: () => set((state) => ({ leftPanelCollapsed: !state.leftPanelCollapsed })),
+  setProjectFilter: (projectId) => set({ selectedProjectFilter: projectId }),
+  setFilterHasDocuments: (value) => set({ filterHasDocuments: value }),
 
   // Load initial data
   initialize: async () => {
     set({ isLoading: true, error: null });
     try {
-      const [sessions, profile] = await Promise.all([
+      const [sessions, profile, projectsData] = await Promise.all([
         api.getSessions(),
         api.getActiveProfile().catch(() => null),
+        api.getProjects().catch(() => ({ projects: [], unassignedCount: 0 })),
       ]);
-      set({ sessions, activeProfile: profile, isLoading: false });
+      set({
+        sessions,
+        activeProfile: profile,
+        projects: projectsData.projects || [],
+        isLoading: false,
+      });
     } catch (error) {
       set({ error: error.message, isLoading: false });
+    }
+  },
+
+  // Projects
+  loadProjects: async () => {
+    try {
+      const data = await api.getProjects();
+      set({ projects: data.projects || [] });
+    } catch (error) {
+      set({ error: error.message });
+    }
+  },
+
+  createProject: async (name, description) => {
+    try {
+      const project = await api.createProject({ name, description });
+      await get().loadProjects();
+      return project;
+    } catch (error) {
+      set({ error: error.message });
+      throw error;
+    }
+  },
+
+  deleteProject: async (projectId) => {
+    try {
+      await api.deleteProject(projectId);
+      await get().loadProjects();
+      await get().loadSessions();
+      // Reset filter if we deleted the filtered project
+      if (get().selectedProjectFilter === projectId) {
+        set({ selectedProjectFilter: null });
+      }
+    } catch (error) {
+      set({ error: error.message });
+      throw error;
+    }
+  },
+
+  setSessionProject: async (sessionId, projectId) => {
+    try {
+      await api.updateSession(sessionId, { project_id: projectId });
+      await get().loadSessions();
+      await get().loadProjects();
+    } catch (error) {
+      set({ error: error.message });
     }
   },
 
   // Sessions
   loadSessions: async () => {
     try {
-      const sessions = await api.getSessions();
+      const { selectedProjectFilter, filterHasDocuments } = get();
+      const filters = {};
+      if (selectedProjectFilter !== null) {
+        filters.project = selectedProjectFilter;
+      }
+      if (filterHasDocuments) {
+        filters.hasDocuments = true;
+      }
+      const sessions = await api.getSessions(filters);
       set({ sessions });
     } catch (error) {
       set({ error: error.message });

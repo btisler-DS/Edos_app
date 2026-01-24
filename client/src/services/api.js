@@ -71,11 +71,47 @@ export async function deleteProfile(id) {
 }
 
 // ============================================
+// Projects
+// ============================================
+
+export async function getProjects() {
+  return request('/projects');
+}
+
+export async function createProject(data) {
+  return request('/projects', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateProject(id, updates) {
+  return request(`/projects/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(updates),
+  });
+}
+
+export async function deleteProject(id) {
+  return request(`/projects/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+// ============================================
 // Sessions
 // ============================================
 
-export async function getSessions() {
-  return request('/sessions');
+export async function getSessions(filters = {}) {
+  const params = new URLSearchParams();
+  if (filters.project !== undefined) {
+    params.set('project', filters.project);
+  }
+  if (filters.hasDocuments) {
+    params.set('hasDocuments', 'true');
+  }
+  const query = params.toString();
+  return request(`/sessions${query ? `?${query}` : ''}`);
 }
 
 export async function getSession(id) {
@@ -91,6 +127,13 @@ export async function createSession() {
 export async function deleteSession(id) {
   return request(`/sessions/${id}`, {
     method: 'DELETE',
+  });
+}
+
+export async function updateSession(id, updates) {
+  return request(`/sessions/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(updates),
   });
 }
 

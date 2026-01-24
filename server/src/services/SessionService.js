@@ -3,6 +3,7 @@ import { generatePrefixedId } from '../utils/ids.js';
 import { now } from '../utils/time.js';
 import { ModelProfileService } from './ModelProfileService.js';
 import { ContextService } from './ContextService.js';
+import { ProjectService } from './ProjectService.js';
 
 export class SessionService {
   /**
@@ -54,6 +55,7 @@ export class SessionService {
 
   /**
    * Create a new session using the active model profile
+   * Auto-assigns to the default project (General)
    */
   static create() {
     const db = getDb();
@@ -63,13 +65,17 @@ export class SessionService {
       throw new Error('No active model profile. Please set one first.');
     }
 
+    // Get default project
+    const defaultProject = ProjectService.getDefault();
+    const projectId = defaultProject?.id || null;
+
     const id = generatePrefixedId('ses');
     const timestamp = now();
 
     db.prepare(`
-      INSERT INTO sessions (id, model_profile_id, user_id, created_at, updated_at, last_active_at)
-      VALUES (?, ?, 'default', ?, ?, ?)
-    `).run(id, activeProfile.id, timestamp, timestamp, timestamp);
+      INSERT INTO sessions (id, model_profile_id, project_id, user_id, created_at, updated_at, last_active_at)
+      VALUES (?, ?, ?, 'default', ?, ?, ?)
+    `).run(id, activeProfile.id, projectId, timestamp, timestamp, timestamp);
 
     return this.getById(id);
   }
@@ -132,5 +138,50 @@ export class SessionService {
     const db = getDb();
     db.prepare('DELETE FROM sessions WHERE id = ?').run(id);
     return true;
+  }
+
+  /**
+   * Assign a session to a project
+   */
+  static setProject(sessionId, projectId) {
+    const db = getDb();
+    db.prepare('UPDATE sessions SET project_id = ?, updated_at = ? WHERE id = ?')
+      .run(projectId, now(), sessionId);
+    return this.getById(sessionId);
+  }
+
+  /**
+   * Get sessions filtered by project
+   */
+  static getByProject(projectId) {
+    const db = getDb();
+    const query = projectId
+      ? `SELECT s.*, sm.orientation_blurb, sm.unresolved_edge, sm.last_pivot,
+           (SELECT SUBSTR(content, 1, 200) FROM messages WHERE session_id = s.id AND role = 'assistant' ORDER BY created_at ASC LIMIT 1) as first_assistant_snippet
+         FROM sessions s LEFT JOIN session_metadata sm ON s.id = sm.session_id
+         WHERE s.project_id = ? ORDER BY s.last_active_at DESC`
+      : `SELECT s.*, sm.orientation_blurb, sm.unresolved_edge, sm.last_pivot,
+           (SELECT SUBSTR(content, 1, 200) FROM messages WHERE session_id = s.id AND role = 'assistant' ORDER BY created_at ASC LIMIT 1) as first_assistant_snippet
+         FROM sessions s LEFT JOIN session_metadata sm ON s.id = sm.session_id
+         WHERE s.project_id IS NULL ORDER BY s.last_active_at DESC`;
+
+    return projectId
+      ? db.prepare(query).all(projectId)
+      : db.prepare(query).all();
+  }
+
+  /**
+   * Get sessions that have documents attached
+   */
+  static getWithDocuments() {
+    const db = getDb();
+    return db.prepare(`
+      SELECT DISTINCT s.*, sm.orientation_blurb, sm.unresolved_edge, sm.last_pivot,
+        (SELECT SUBSTR(content, 1, 200) FROM messages WHERE session_id = s.id AND role = 'assistant' ORDER BY created_at ASC LIMIT 1) as first_assistant_snippet
+      FROM sessions s
+      LEFT JOIN session_metadata sm ON s.id = sm.session_id
+      INNER JOIN session_context sc ON s.id = sc.session_id
+      ORDER BY s.last_active_at DESC
+    `).all();
   }
 }

@@ -5,10 +5,21 @@ import { PdfExportService } from '../services/PdfExportService.js';
 
 const router = Router();
 
-// GET /api/sessions - List all sessions
+// GET /api/sessions - List all sessions (with optional filters)
 router.get('/', (req, res) => {
   try {
-    const sessions = SessionService.getAll();
+    const { project, hasDocuments } = req.query;
+
+    let sessions;
+    if (hasDocuments === 'true') {
+      sessions = SessionService.getWithDocuments();
+    } else if (project !== undefined) {
+      // project can be a project_id or 'unassigned' (null)
+      sessions = SessionService.getByProject(project === 'unassigned' ? null : project);
+    } else {
+      sessions = SessionService.getAll();
+    }
+
     res.json(sessions);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -79,6 +90,27 @@ router.get('/:id/export/pdf', async (req, res) => {
   } catch (error) {
     console.error('PDF export error:', error);
     res.status(500).json({ error: 'Failed to generate PDF' });
+  }
+});
+
+// PUT /api/sessions/:id - Update session (e.g., project assignment)
+router.put('/:id', (req, res) => {
+  try {
+    const session = SessionService.getById(req.params.id);
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    const { project_id } = req.body;
+
+    if (project_id !== undefined) {
+      SessionService.setProject(req.params.id, project_id || null);
+    }
+
+    const updated = SessionService.getById(req.params.id);
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 

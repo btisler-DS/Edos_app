@@ -121,6 +121,32 @@ const styles = {
     color: '#ccc',
     background: '#2a2a4a',
   },
+  filterBar: {
+    padding: '8px 16px',
+    borderBottom: '1px solid #1a1a3a',
+    display: 'flex',
+    gap: '8px',
+    alignItems: 'center',
+  },
+  filterSelect: {
+    flex: 1,
+    padding: '6px 8px',
+    background: '#1a1a3a',
+    border: '1px solid #2a2a4a',
+    borderRadius: '4px',
+    color: '#ccc',
+    fontSize: '12px',
+    cursor: 'pointer',
+    outline: 'none',
+  },
+  filterCheckbox: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    fontSize: '12px',
+    color: '#888',
+    cursor: 'pointer',
+  },
   list: {
     flex: 1,
     overflow: 'auto',
@@ -128,7 +154,22 @@ const styles = {
 };
 
 function LeftPanel() {
-  const { createSession, isLoading, sessionSortBy, setSessionSortBy, loadSessions, selectSession, activeSessionId, leftPanelCollapsed, toggleLeftPanel } = useAppStore();
+  const {
+    createSession,
+    isLoading,
+    sessionSortBy,
+    setSessionSortBy,
+    loadSessions,
+    selectSession,
+    activeSessionId,
+    leftPanelCollapsed,
+    toggleLeftPanel,
+    projects,
+    selectedProjectFilter,
+    setProjectFilter,
+    filterHasDocuments,
+    setFilterHasDocuments,
+  } = useAppStore();
   const fileInputRef = useRef(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < MOBILE_BREAKPOINT);
 
@@ -175,6 +216,18 @@ function LeftPanel() {
 
     // Reset input so same file can be uploaded again
     e.target.value = '';
+  };
+
+  const handleProjectFilterChange = (e) => {
+    const value = e.target.value;
+    setProjectFilter(value === '' ? null : value);
+    // Reload sessions with new filter
+    setTimeout(() => loadSessions(), 0);
+  };
+
+  const handleDocsFilterChange = (e) => {
+    setFilterHasDocuments(e.target.checked);
+    setTimeout(() => loadSessions(), 0);
   };
 
   // On mobile when collapsed, hide completely (will show hamburger in header)
@@ -272,6 +325,28 @@ function LeftPanel() {
           >
             Created
           </button>
+        </div>
+        <div style={styles.filterBar}>
+          <select
+            style={styles.filterSelect}
+            value={selectedProjectFilter || ''}
+            onChange={handleProjectFilterChange}
+          >
+            <option value="">All Projects</option>
+            {projects.map(p => (
+              <option key={p.id} value={p.id}>
+                {p.name} ({p.sessionCount || 0})
+              </option>
+            ))}
+          </select>
+          <label style={styles.filterCheckbox}>
+            <input
+              type="checkbox"
+              checked={filterHasDocuments}
+              onChange={handleDocsFilterChange}
+            />
+            Docs
+          </label>
         </div>
         <div style={styles.list}>
           <SessionList />
