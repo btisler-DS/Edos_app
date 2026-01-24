@@ -26,6 +26,10 @@ export const useAppStore = create((set, get) => ({
   relatedSessions: [],
   relatedSessionsLoading: false,
 
+  // Inquiry Links (longitudinal continuity)
+  inquiryLinks: { incoming: [], outgoing: [] },
+  ancestorChain: [],
+
   // Context Assembly Mode
   contextAssemblyMode: false,
   selectedForAssembly: [], // Array of session IDs
@@ -137,8 +141,9 @@ export const useAppStore = create((set, get) => ({
         documents: session.documents || [],
         isLoading: false,
       });
-      // Load related sessions in background (non-blocking)
+      // Load related sessions and inquiry links in background (non-blocking)
       get().loadRelatedSessions(sessionId);
+      get().loadInquiryLinks(sessionId);
     } catch (error) {
       set({ error: error.message, isLoading: false });
     }
@@ -314,6 +319,40 @@ export const useAppStore = create((set, get) => ({
   },
 
   clearRelatedSessions: () => set({ relatedSessions: [], relatedSessionsLoading: false }),
+
+  // Inquiry Links (longitudinal continuity)
+  loadInquiryLinks: async (sessionId) => {
+    try {
+      const [links, chain] = await Promise.all([
+        api.getInquiryLinks(sessionId),
+        api.getAncestorChain(sessionId),
+      ]);
+      set({ inquiryLinks: links, ancestorChain: chain });
+    } catch (error) {
+      // Silently fail - inquiry links are optional
+      console.error('Failed to load inquiry links:', error);
+      set({ inquiryLinks: { incoming: [], outgoing: [] }, ancestorChain: [] });
+    }
+  },
+
+  clearInquiryLinks: () => set({ inquiryLinks: { incoming: [], outgoing: [] }, ancestorChain: [] }),
+
+  /**
+   * Continue an inquiry by creating a new session linked structurally to the given session.
+   * No context is assembled - this is structural continuity only.
+   */
+  continueInquiry: async (fromSessionId) => {
+    set({ isLoading: true });
+    try {
+      const session = await api.createSession({ continuedFromSessionId: fromSessionId });
+      // Select the new session
+      await get().selectSession(session.id);
+      // Refresh sessions list
+      await get().loadSessions();
+    } catch (error) {
+      set({ error: error.message, isLoading: false });
+    }
+  },
 
   // Context Assembly Mode
   setContextAssemblyMode: (enabled) => set({

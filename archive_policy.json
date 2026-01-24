@@ -1,0 +1,30 @@
+{
+  "name": "EDOS Archive Policy",
+  "version": "1.0",
+  "scope": "Imported conversations and historical inquiry artifacts",
+  "policies": {
+    "import_behavior": {
+      "mode": "append-only",
+      "overwrite_existing": false,
+      "deduplicate_by": "conversation_id"
+    },
+    "content_rules": {
+      "include": ["user_messages", "assistant_messages", "timestamps", "titles"],
+      "exclude": ["system_messages", "custom_instructions", "model_metadata", "personality"]
+    },
+    "automation_constraints": {
+      "no_auto_embedding": true,
+      "no_auto_metadata": true,
+      "no_auto_linking": true
+    },
+    "activation_rules": {
+      "archived_content_is_passive": true,
+      "becomes_active_only_when_opened": true,
+      "context_used_only_when_assembled": true
+    }
+  },
+  "rationale": [
+    "Archived inquiries are reference material, not active memory.",
+    "The archive exists to support rediscovery, not recall."
+  ]
+}

@@ -236,6 +236,52 @@ export async function getSimilarDocuments(sessionId, limit = 5) {
 }
 
 // ============================================
+// Inquiry Links (Longitudinal Continuity)
+// ============================================
+
+/**
+ * Get all inquiry links for a session (incoming and outgoing)
+ * @param {string} sessionId
+ * @returns {Promise<{incoming: object[], outgoing: object[]}>}
+ */
+export async function getInquiryLinks(sessionId) {
+  return request(`/inquiry-links/${sessionId}`);
+}
+
+/**
+ * Get the ancestor chain for a session (oldest first)
+ * @param {string} sessionId
+ * @returns {Promise<object[]>}
+ */
+export async function getAncestorChain(sessionId) {
+  return request(`/inquiry-links/${sessionId}/chain`);
+}
+
+/**
+ * Create an explicit link between two inquiries
+ * @param {string} fromSessionId - The source session (earlier in time)
+ * @param {string} toSessionId - The destination session (later in time)
+ * @param {string} [note] - Optional user note
+ * @returns {Promise<object>}
+ */
+export async function createInquiryLink(fromSessionId, toSessionId, note = null) {
+  return request('/inquiry-links', {
+    method: 'POST',
+    body: JSON.stringify({ fromSessionId, toSessionId, note }),
+  });
+}
+
+/**
+ * Delete an inquiry link
+ * @param {string} linkId
+ */
+export async function deleteInquiryLink(linkId) {
+  return request(`/inquiry-links/${linkId}`, {
+    method: 'DELETE',
+  });
+}
+
+// ============================================
 // Messages (Streaming)
 // ============================================
 

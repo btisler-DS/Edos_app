@@ -16,6 +16,12 @@ export function runMigrations() {
   // Migration: Update session_context to allow assembled_sessions source_type
   migrateSessionContextSourceType(db);
 
+  // Migration: Add inquiry_links table for longitudinal continuity
+  migrateInquiryLinks(db);
+
+  // Migration: Add imported flag to sessions (v2 archival ingestion)
+  migrateImportedFlag(db);
+
   // Check if messages table has the old constraint (only user/assistant)
   // by trying to insert a system message
   try {
@@ -248,5 +254,55 @@ function migrateSessionContextSourceType(db) {
     }
   } catch (error) {
     console.error('Session context migration error:', error.message);
+  }
+}
+
+/**
+ * Migration: Add inquiry_links table for explicit longitudinal linking
+ */
+function migrateInquiryLinks(db) {
+  try {
+    const table = db.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='inquiry_links'"
+    ).get();
+
+    if (!table) {
+      db.exec(`
+        CREATE TABLE inquiry_links (
+          id TEXT PRIMARY KEY,
+          from_session_id TEXT NOT NULL,
+          to_session_id TEXT NOT NULL,
+          note TEXT,
+          created_at TEXT DEFAULT (datetime('now')),
+          FOREIGN KEY (from_session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+          FOREIGN KEY (to_session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+          UNIQUE(from_session_id, to_session_id)
+        )
+      `);
+      db.exec('CREATE INDEX IF NOT EXISTS idx_links_from ON inquiry_links(from_session_id)');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_links_to ON inquiry_links(to_session_id)');
+      console.log('Migration: Created inquiry_links table');
+    }
+  } catch (error) {
+    console.error('Inquiry links migration error:', error.message);
+  }
+}
+
+/**
+ * Migration: Add imported flag to sessions for v2 archival ingestion
+ * Imported sessions are "books on a shelf" - discoverable but silent until engaged
+ */
+function migrateImportedFlag(db) {
+  try {
+    const columns = db.prepare("PRAGMA table_info(sessions)").all();
+    const hasImported = columns.some(col => col.name === 'imported');
+
+    if (!hasImported) {
+      db.exec('ALTER TABLE sessions ADD COLUMN imported INTEGER DEFAULT 0');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_sessions_imported ON sessions(imported)');
+      console.log('Migration: Added imported flag to sessions');
+    }
+  } catch (error) {
+    console.error('Imported flag migration error:', error.message);
   }
 }

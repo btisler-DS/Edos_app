@@ -14,6 +14,7 @@ import uploadRouter from './routes/upload.js';
 import anchorsRouter from './routes/anchors.js';
 import projectsRouter from './routes/projects.js';
 import similarityRouter from './routes/similarity.js';
+import inquiryLinksRouter from './routes/inquiryLinks.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -30,6 +31,7 @@ app.use('/api/sessions', messagesRouter); // Message routes are under /api/sessi
 app.use('/api/sessions', anchorsRouter);  // Anchor routes are under /api/sessions/:sessionId/anchors
 app.use('/api/upload', uploadRouter);
 app.use('/api/similarity', similarityRouter);
+app.use('/api/inquiry-links', inquiryLinksRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {

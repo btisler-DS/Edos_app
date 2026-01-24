@@ -5,6 +5,7 @@ import { ModelProfileService } from './ModelProfileService.js';
 import { ContextService } from './ContextService.js';
 import { ProjectService } from './ProjectService.js';
 import { MessageService } from './MessageService.js';
+import { InquiryLinkService } from './InquiryLinkService.js';
 
 export class SessionService {
   /**
@@ -59,8 +60,9 @@ export class SessionService {
    * Create a new session using the active model profile
    * Auto-assigns to the default project (General)
    * @param {string[]} [contextFromSessions] - Optional array of session IDs to assemble context from
+   * @param {string} [continuedFromSessionId] - Optional session ID to create structural link from (no context assembly)
    */
-  static create(contextFromSessions = null) {
+  static create(contextFromSessions = null, continuedFromSessionId = null) {
     const db = getDb();
     const activeProfile = ModelProfileService.getActive();
 
@@ -79,6 +81,16 @@ export class SessionService {
       INSERT INTO sessions (id, model_profile_id, project_id, user_id, created_at, updated_at, last_active_at)
       VALUES (?, ?, ?, 'default', ?, ?, ?)
     `).run(id, activeProfile.id, projectId, timestamp, timestamp, timestamp);
+
+    // If continuedFromSessionId is provided, create structural link (no context assembly)
+    if (continuedFromSessionId) {
+      try {
+        InquiryLinkService.create(continuedFromSessionId, id);
+      } catch (error) {
+        // Log but don't fail session creation if link fails
+        console.error('Failed to create inquiry link:', error.message);
+      }
+    }
 
     // If contextFromSessions is provided, assemble context from those sessions
     if (contextFromSessions && Array.isArray(contextFromSessions) && contextFromSessions.length > 0) {
@@ -139,6 +151,7 @@ export class SessionService {
    * Criteria:
    * - last_active_at > threshold ago
    * - AND (metadata doesn't exist OR metadata.generated_at < last_active_at)
+   * - AND NOT imported (imported sessions are "books on a shelf" - no auto-processing)
    */
   static getSessionsNeedingMetadata(thresholdMs) {
     const db = getDb();
@@ -150,6 +163,7 @@ export class SessionService {
       LEFT JOIN session_metadata sm ON s.id = sm.session_id
       WHERE s.last_active_at < ?
       AND (sm.id IS NULL OR sm.generated_at < s.last_active_at)
+      AND (s.imported IS NULL OR s.imported = 0)
     `).all(thresholdTime);
   }
 

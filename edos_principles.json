@@ -1,0 +1,31 @@
+{
+  "name": "EDOS Principles",
+  "version": "1.0",
+  "intent": "Define non-negotiable system-level invariants governing epistemic behavior.",
+  "principles": [
+    {
+      "id": "explicit_permission",
+      "statement": "No context, memory, or continuity may be used without explicit user action."
+    },
+    {
+      "id": "pull_over_push",
+      "statement": "All intelligence must be pull-based. The system must never suggest, inject, or anticipate."
+    },
+    {
+      "id": "inspectability",
+      "statement": "Any context used by the system must be visible, attributable, and reversible."
+    },
+    {
+      "id": "structure_over_personality",
+      "statement": "The system preserves structure, not posture. Personality emerges through interaction."
+    },
+    {
+      "id": "no_implicit_memory",
+      "statement": "The system must never behave as if it remembers unless context is provided."
+    },
+    {
+      "id": "reversibility",
+      "statement": "Any structural operation must be undoable without side effect."
+    }
+  ]
+}

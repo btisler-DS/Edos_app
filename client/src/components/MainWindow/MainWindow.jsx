@@ -112,12 +112,67 @@ const styles = {
     background: '#3b1f5e',
     color: '#c4b5fd',
   },
+  continueButton: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '6px 12px',
+    background: 'transparent',
+    border: '1px solid #444',
+    borderRadius: '4px',
+    color: '#ccc',
+    fontSize: '13px',
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+    marginRight: '8px',
+  },
+  continueButtonHover: {
+    background: '#1e3a5f',
+    borderColor: '#3b82f6',
+    color: '#93c5fd',
+  },
+  continuationIndicator: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '6px 16px',
+    background: '#1a2a3a',
+    borderBottom: '1px solid #2a3a4a',
+    fontSize: '12px',
+    color: '#7dd3fc',
+  },
+  continuationLink: {
+    color: '#93c5fd',
+    cursor: 'pointer',
+    textDecoration: 'underline',
+    textUnderlineOffset: '2px',
+  },
+  toolbarLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    flex: 1,
+  },
+  toolbarRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
 };
 
 function MainWindow() {
-  const { activeSessionId, contextTruncated, messages, documents } = useAppStore();
+  const {
+    activeSessionId,
+    contextTruncated,
+    messages,
+    documents,
+    inquiryLinks,
+    continueInquiry,
+    selectSession,
+  } = useAppStore();
   const [exporting, setExporting] = useState(false);
   const [exportHover, setExportHover] = useState(false);
+  const [continueHover, setContinueHover] = useState(false);
 
   const handleExport = async () => {
     if (exporting || !activeSessionId) return;
@@ -153,24 +208,66 @@ function MainWindow() {
     );
   }
 
+  // Check if this inquiry continues from another
+  const continuedFrom = inquiryLinks?.incoming?.[0];
+
+  const handleContinue = () => {
+    if (activeSessionId) {
+      continueInquiry(activeSessionId);
+    }
+  };
+
   return (
     <div style={styles.container}>
       <div style={styles.toolbar}>
-        <button
-          style={{
-            ...styles.exportButton,
-            ...(exportHover && !exporting && hasMessages ? styles.exportButtonHover : {}),
-            ...(!hasMessages || exporting ? styles.exportButtonDisabled : {}),
-          }}
-          onClick={handleExport}
-          onMouseEnter={() => setExportHover(true)}
-          onMouseLeave={() => setExportHover(false)}
-          disabled={!hasMessages || exporting}
-          title={!hasMessages ? 'No messages to export' : 'Export inquiry to PDF'}
-        >
-          <span>{exporting ? 'Exporting...' : 'Export PDF'}</span>
-        </button>
+        <div style={styles.toolbarLeft}>
+          {hasMessages && (
+            <button
+              style={{
+                ...styles.continueButton,
+                ...(continueHover ? styles.continueButtonHover : {}),
+              }}
+              onClick={handleContinue}
+              onMouseEnter={() => setContinueHover(true)}
+              onMouseLeave={() => setContinueHover(false)}
+              title="Create a new inquiry linked to this one"
+            >
+              <span>Continue this inquiry →</span>
+            </button>
+          )}
+        </div>
+        <div style={styles.toolbarRight}>
+          <button
+            style={{
+              ...styles.exportButton,
+              ...(exportHover && !exporting && hasMessages ? styles.exportButtonHover : {}),
+              ...(!hasMessages || exporting ? styles.exportButtonDisabled : {}),
+            }}
+            onClick={handleExport}
+            onMouseEnter={() => setExportHover(true)}
+            onMouseLeave={() => setExportHover(false)}
+            disabled={!hasMessages || exporting}
+            title={!hasMessages ? 'No messages to export' : 'Export inquiry to PDF'}
+          >
+            <span>{exporting ? 'Exporting...' : 'Export PDF'}</span>
+          </button>
+        </div>
       </div>
+      {continuedFrom && (
+        <div style={styles.continuationIndicator}>
+          <span>↳</span>
+          <span>
+            Continues from{' '}
+            <span
+              style={styles.continuationLink}
+              onClick={() => selectSession(continuedFrom.from_session_id)}
+              title={`Go to: ${continuedFrom.from_session_title}`}
+            >
+              {continuedFrom.from_session_title || 'Untitled Inquiry'}
+            </span>
+          </span>
+        </div>
+      )}
       {contextTruncated && (
         <div style={styles.contextWarning}>
           <span>⚠</span>
