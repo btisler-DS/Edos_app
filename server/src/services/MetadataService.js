@@ -4,6 +4,8 @@ import { now } from '../utils/time.js';
 import { MessageService } from './MessageService.js';
 import { SessionService } from './SessionService.js';
 import { getProviderFromEnv } from '../providers/index.js';
+import { EmbeddingService } from './EmbeddingService.js';
+import { EmbeddingStore } from './EmbeddingStore.js';
 
 export class MetadataService {
   /**
@@ -40,7 +42,14 @@ export class MetadataService {
     const metadata = await provider.generateMetadata(content);
 
     // Store the metadata
-    return this._upsertMetadata(sessionId, metadata);
+    const result = this._upsertMetadata(sessionId, metadata);
+
+    // Fire-and-forget embedding generation
+    this._embedSessionSummary(sessionId, metadata).catch(err => {
+      console.error(`[MetadataService] Embedding failed:`, err.message);
+    });
+
+    return result;
   }
 
   /**
@@ -123,5 +132,44 @@ export class MetadataService {
     }
 
     return this.getBySessionId(sessionId);
+  }
+
+  /**
+   * Generate and store embedding for session summary (private)
+   * @param {string} sessionId - Session ID
+   * @param {object} metadata - Generated metadata
+   */
+  static async _embedSessionSummary(sessionId, metadata) {
+    // Check if already embedded
+    if (EmbeddingStore.exists('session_summary', sessionId)) {
+      return;
+    }
+
+    // Combine metadata fields into text for embedding
+    const textParts = [];
+    if (metadata.orientation_blurb) {
+      textParts.push(metadata.orientation_blurb);
+    }
+    if (metadata.unresolved_edge) {
+      textParts.push(metadata.unresolved_edge);
+    }
+    if (metadata.last_pivot) {
+      textParts.push(metadata.last_pivot);
+    }
+
+    const text = textParts.join(' ');
+    if (!text.trim()) {
+      return;
+    }
+
+    // Generate embedding
+    const embedding = await EmbeddingService.embed(text);
+    if (!embedding) {
+      return;
+    }
+
+    // Store embedding
+    EmbeddingStore.store('session_summary', sessionId, embedding);
+    console.log(`[MetadataService] Embedded session summary for ${sessionId}`);
   }
 }

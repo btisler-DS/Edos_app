@@ -12,6 +12,8 @@ import sessionsRouter from './routes/sessions.js';
 import messagesRouter from './routes/messages.js';
 import uploadRouter from './routes/upload.js';
 import anchorsRouter from './routes/anchors.js';
+import projectsRouter from './routes/projects.js';
+import similarityRouter from './routes/similarity.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -22,10 +24,12 @@ app.use(express.json());
 
 // API Routes
 app.use('/api/profiles', profilesRouter);
+app.use('/api/projects', projectsRouter);
 app.use('/api/sessions', sessionsRouter);
 app.use('/api/sessions', messagesRouter); // Message routes are under /api/sessions/:sessionId/messages
 app.use('/api/sessions', anchorsRouter);  // Anchor routes are under /api/sessions/:sessionId/anchors
 app.use('/api/upload', uploadRouter);
+app.use('/api/similarity', similarityRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {

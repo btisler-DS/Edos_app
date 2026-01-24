@@ -4,6 +4,10 @@ import { createRequire } from 'module';
 import { SessionService } from '../services/SessionService.js';
 import { ContextService } from '../services/ContextService.js';
 import { MessageService } from '../services/MessageService.js';
+import { ChunkService } from '../services/ChunkService.js';
+import { EmbeddingService } from '../services/EmbeddingService.js';
+import { EmbeddingStore } from '../services/EmbeddingStore.js';
+import { chunkText } from '../utils/chunking.js';
 
 // pdf-parse is CommonJS only, use createRequire
 const require = createRequire(import.meta.url);
@@ -35,6 +39,38 @@ const upload = multer({
     }
   },
 });
+
+/**
+ * Process document chunks and generate embeddings (non-blocking)
+ * @param {string} contextId - ID of the session_context record
+ * @param {string} sourceName - Original filename
+ * @param {string} content - Full document content
+ */
+async function processDocumentChunks(contextId, sourceName, content) {
+  // Chunk the text
+  const chunks = chunkText(content);
+  if (chunks.length === 0) {
+    return;
+  }
+
+  // Store chunks in database
+  const storedChunks = ChunkService.storeChunks(contextId, sourceName, chunks);
+
+  // Embed each chunk
+  for (const chunk of storedChunks) {
+    try {
+      const embedding = await EmbeddingService.embed(chunk.content);
+      if (embedding) {
+        EmbeddingStore.store('document_chunk', chunk.id, embedding);
+      }
+    } catch (err) {
+      console.error(`[Upload] Chunk embedding failed for ${chunk.id}:`, err.message);
+      // Continue with other chunks
+    }
+  }
+
+  console.log(`[Upload] Processed ${storedChunks.length} chunks for ${sourceName}`);
+}
 
 /**
  * Extract text content from uploaded file
@@ -91,7 +127,12 @@ router.post('/', upload.single('file'), async (req, res) => {
     }
 
     // Add file content as session context
-    ContextService.addFileContext(session.id, req.file.originalname, content.trim());
+    const contextRecord = ContextService.addFileContext(session.id, req.file.originalname, content.trim());
+
+    // Non-blocking chunking and embedding
+    processDocumentChunks(contextRecord.id, req.file.originalname, content.trim()).catch(err => {
+      console.error('[Upload] Chunk/embedding failed:', err.message);
+    });
 
     // Insert a timeline message indicating document was added
     MessageService.addSystemMessage(
