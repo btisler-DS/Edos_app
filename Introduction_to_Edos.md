@@ -81,7 +81,7 @@ It’s not meant to be those things. It’s meant to help you **think and return
 
 ---
 
-## How Your Friend Can Build It
+## How You Can Build It
 
 1. **Clone the repo** from GitHub
    (it contains the full source)([GitHub][1])
@@ -95,7 +95,7 @@ It’s not meant to be those things. It’s meant to help you **think and return
 4. **Use Edos from the browser**
    It will create its own local database automatically.([GitHub][1])
 
-This means your friend can have **their own independent Edos instance** with their own memory, separate from yours.([GitHub][1])
+This means you can have **Your own independent Edos instance** with your own memory.([GitHub][1])
 
 ---
 
