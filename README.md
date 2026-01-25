@@ -8,6 +8,75 @@ This repository contains the current **working prototype**.
 
 ---
 
+## Installation
+
+### Requirements
+
+**Minimum Hardware:**
+- CPU: Any modern dual-core processor (2015 or later)
+- RAM: 4 GB (8 GB recommended)
+- Storage: 500 MB free space (plus space for your database)
+- Display: 1280x720 minimum resolution
+
+**Software:**
+- Node.js 18.x or higher
+- npm 9.x or higher
+- A modern browser (Chrome, Firefox, Edge, Safari)
+- API key from Anthropic and/or OpenAI
+
+### Setup Instructions
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/brucetisler/Edos.git
+   cd Edos
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm run install:all
+   ```
+
+3. **Configure environment variables**
+   ```bash
+   cp .env.example .env
+   ```
+   Edit `.env` and add your API keys:
+   ```
+   ANTHROPIC_API_KEY=your_anthropic_api_key_here
+   OPENAI_API_KEY=your_openai_api_key_here
+   PORT=3001
+   ```
+
+4. **Create your user profile** (optional but recommended)
+   ```bash
+   cp user.json.template user.json
+   ```
+   Edit `user.json` with your personal information. The `personal_information` section should be customized with your details. The remaining sections describe inquiry style and preferences — modify them to reflect how you think and work, or keep the defaults.
+
+5. **Initialize the database**
+   ```bash
+   npm run db:init
+   ```
+
+6. **Start EDOS**
+   ```bash
+   npm run dev
+   ```
+
+   The application will be available at:
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:3001
+
+### Accessing from Other Devices
+
+To access EDOS from other devices on your local network (phone, tablet):
+
+1. Find your computer's local IP address
+2. Access `http://<your-local-ip>:3000` from your device
+
+---
+
 ## Core Concept
 
 Modern tools preserve *data*, but they fail to preserve *orientation*.

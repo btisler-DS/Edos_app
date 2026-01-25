@@ -5,6 +5,9 @@ node_modules/
 .env
 .env.local
 
+# User profile (contains personal information)
+user.json
+
 # Database
 *.db
 *.db-journal
