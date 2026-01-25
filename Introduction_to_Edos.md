@@ -127,6 +127,60 @@ Broken down:
 * **Operating System**
   A coordinating layer that manages processes, memory, and state over time, rather than a single-purpose application.
 
+## Importing Conversations into Edos
+
+Edos allows you to import exported conversation files (such as `conversation.json`) from other AI tools, including Claude-style exports.
+
+---
+
+### What this means
+
+- Edos can **read** past conversations  
+- Edos can **store** them locally  
+- Edos can **analyze or reference** them later  
+
+---
+
+### What this does **not** mean
+
+- The imported conversation did **not** “happen” inside Edos  
+- Edos does **not** assume the AI was correct  
+- Edos does **not** trust the structure, safety, or reasoning of the original system  
+- Imported conversations do **not** gain Edos memory continuity automatically  
+
+---
+
+### A simple way to think about it
+
+> Importing a conversation is like importing a **document**, not resuming a **live thought**.
+
+---
+
+### Why this matters
+
+Many tools blur this line and quietly imply:
+
+> “If you import it, it becomes part of the system’s mind.”
+
+Edos explicitly **refuses that illusion**.
+
+This design choice aligns with:
+
+- Epistemic integrity  
+- A non-anthropomorphic view of AI  
+- Resistance to false continuity  
+
+For dyslexic users in particular, this clarity matters because it:
+
+- Avoids hidden state  
+- Prevents surprise behavior  
+- Reduces cognitive load and mistrust  
+
+---
+
+### One-sentence summary (for README or tooltips)
+
+> **Edos can import conversation JSON files from tools like Claude, but imported conversations are treated as historical records—not live memory or trusted reasoning.**
 
 ---
 
