@@ -65,7 +65,7 @@ Edos keeps your work in a local database so nothing disappears once it’s creat
 There are no forced tags, folders, or organization systems you *must* use. The goal is to focus on thinking, not on bookkeeping.([GitHub][1])
 
 ### 6. Edos can import conversation JSON files
-Imports from tools like Claude, but imported conversations are treated as historical records—not live memory or trusted reasoning.
+Imports from tools like Claude, ChatGPT, but imported conversations are treated as historical records—not live memory or trusted reasoning.
 ---
 
 ## What Edos Is *Not*
