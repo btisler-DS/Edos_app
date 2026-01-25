@@ -1,5 +1,10 @@
 # EDOS — Persistent Inquiry Environment
 
+> **License Notice**
+> Edos is released under a **non-commercial demo and evaluation license**.
+> Commercial use, redistribution, or deployment as a service is prohibited.
+> See [`LICENSE.md`](LICENSE.md) for details.
+
 **EDOS** is a local-first, browser-based inquiry environment designed to preserve *continuity of thinking* across time, interruptions, and devices.
 
 Unlike traditional chat tools or note apps, EDOS treats inquiry as a **living process**, not a sequence of isolated exchanges. Sessions persist until the user explicitly closes them. Context is regenerated on re-entry rather than frozen into summaries or logs.
@@ -226,6 +231,9 @@ Questions, confusion, and critique are welcome — especially around UX, re-entr
 
 ## License
 
-License to be determined.
-This prototype is not currently released for commercial use.
+Edos is released under the **Edos Demo & Evaluation License** — a non-commercial, source-available license.
+
+You may clone, build, run, and modify Edos for personal evaluation, research, and demonstration. Commercial use, redistribution, and deployment as a service are prohibited.
+
+See [`LICENSE.md`](LICENSE.md) for full terms.
 
