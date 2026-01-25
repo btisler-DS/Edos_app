@@ -180,9 +180,6 @@ For dyslexic users in particular, this clarity matters because it:
 
 ---
 
-### One-sentence summary (for README or tooltips)
-
-> **Edos can import conversation JSON files from tools like Claude, but imported conversations are treated as historical records—not live memory or trusted reasoning.**
 
 ---
 
