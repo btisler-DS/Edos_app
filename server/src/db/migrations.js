@@ -22,6 +22,9 @@ export function runMigrations() {
   // Migration: Add imported flag to sessions (v2 archival ingestion)
   migrateImportedFlag(db);
 
+  // Migration: Add session control columns (pinned, archived, title_locked)
+  migrateSessionControls(db);
+
   // Check if messages table has the old constraint (only user/assistant)
   // by trying to insert a system message
   try {
@@ -122,19 +125,7 @@ function migrateProjects(db) {
     console.error('Projects migration error:', error.message);
   }
 
-  // Always ensure all sessions belong to a project (assign orphans to General)
-  try {
-    const defaultProject = db.prepare("SELECT id FROM projects WHERE name = 'General'").get();
-    if (defaultProject) {
-      const result = db.prepare('UPDATE sessions SET project_id = ? WHERE project_id IS NULL')
-        .run(defaultProject.id);
-      if (result.changes > 0) {
-        console.log(`Migration: Assigned ${result.changes} orphan sessions to General project`);
-      }
-    }
-  } catch (error) {
-    console.error('Orphan sessions migration error:', error.message);
-  }
+  // Phase 7.1: Sessions with project_id = NULL are valid (no auto-assignment)
 }
 
 /**
@@ -304,5 +295,39 @@ function migrateImportedFlag(db) {
     }
   } catch (error) {
     console.error('Imported flag migration error:', error.message);
+  }
+}
+
+/**
+ * Migration: Add session control columns (pinned, archived, title_locked)
+ * Phase 6: Explicit, reversible user control over inquiry objects
+ */
+function migrateSessionControls(db) {
+  try {
+    const columns = db.prepare("PRAGMA table_info(sessions)").all();
+    const columnNames = columns.map(col => col.name);
+
+    if (!columnNames.includes('pinned')) {
+      db.exec('ALTER TABLE sessions ADD COLUMN pinned INTEGER DEFAULT 0');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_sessions_pinned ON sessions(pinned)');
+      console.log('Migration: Added pinned column to sessions');
+    }
+
+    if (!columnNames.includes('archived')) {
+      db.exec('ALTER TABLE sessions ADD COLUMN archived INTEGER DEFAULT 0');
+      console.log('Migration: Added archived column to sessions');
+    }
+
+    if (!columnNames.includes('title_locked')) {
+      db.exec('ALTER TABLE sessions ADD COLUMN title_locked INTEGER DEFAULT 0');
+      // Backfill: imported sessions get title_locked = 1
+      const result = db.prepare('UPDATE sessions SET title_locked = 1 WHERE imported = 1').run();
+      if (result.changes > 0) {
+        console.log(`Migration: Locked titles on ${result.changes} imported sessions`);
+      }
+      console.log('Migration: Added title_locked column to sessions');
+    }
+  } catch (error) {
+    console.error('Session controls migration error:', error.message);
   }
 }

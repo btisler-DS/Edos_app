@@ -110,6 +110,9 @@ export async function getSessions(filters = {}) {
   if (filters.hasDocuments) {
     params.set('hasDocuments', 'true');
   }
+  if (filters.archived) {
+    params.set('archived', 'true');
+  }
   const query = params.toString();
   return request(`/sessions${query ? `?${query}` : ''}`);
 }
@@ -140,6 +143,18 @@ export async function updateSession(id, updates) {
 
 export async function getSessionMessages(sessionId) {
   return request(`/sessions/${sessionId}/messages`);
+}
+
+export async function deleteContext(sessionId, contextId) {
+  return request(`/sessions/${sessionId}/context/${contextId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function deleteAllContext(sessionId) {
+  return request(`/sessions/${sessionId}/context`, {
+    method: 'DELETE',
+  });
 }
 
 /**
@@ -383,4 +398,54 @@ export async function importOpenAIBackup(file) {
   }
 
   return response.json();
+}
+
+// ============================================
+// Search (Retrieval)
+// ============================================
+
+/**
+ * Keyword search across sessions and messages
+ * @param {string} query - Search query
+ * @param {object} options - Search options
+ * @returns {Promise<object[]>} Search results
+ */
+export async function searchKeyword(query, options = {}) {
+  const params = new URLSearchParams({ q: query });
+  if (options.limit) params.set('limit', options.limit);
+  if (options.includeAssistant) params.set('include_assistant', 'true');
+  if (options.importedOnly) params.set('imported_only', 'true');
+  if (options.projectId) params.set('projectId', options.projectId);
+
+  return request(`/search/keyword?${params.toString()}`);
+}
+
+/**
+ * Search sessions by date range
+ * @param {object} options - Search options
+ * @returns {Promise<object[]>} Search results
+ */
+export async function searchByDate(options = {}) {
+  const params = new URLSearchParams();
+  if (options.startDate) params.set('start_date', options.startDate);
+  if (options.endDate) params.set('end_date', options.endDate);
+  if (options.importedOnly) params.set('imported_only', 'true');
+  if (options.limit) params.set('limit', options.limit);
+  if (options.projectId) params.set('projectId', options.projectId);
+
+  return request(`/search/by-date?${params.toString()}`);
+}
+
+/**
+ * Concept search using semantic similarity
+ * @param {string} query - Concept query
+ * @param {object} options - Search options
+ * @returns {Promise<object[]>} Search results with scores
+ */
+export async function searchConcept(query, options = {}) {
+  const params = new URLSearchParams({ q: query });
+  if (options.limit) params.set('limit', options.limit);
+  if (options.projectId) params.set('projectId', options.projectId);
+
+  return request(`/search/concept?${params.toString()}`);
 }

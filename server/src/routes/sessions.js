@@ -2,13 +2,14 @@ import { Router } from 'express';
 import { SessionService } from '../services/SessionService.js';
 import { MessageService } from '../services/MessageService.js';
 import { PdfExportService } from '../services/PdfExportService.js';
+import { ContextService } from '../services/ContextService.js';
 
 const router = Router();
 
 // GET /api/sessions - List all sessions (with optional filters)
 router.get('/', (req, res) => {
   try {
-    const { project, hasDocuments } = req.query;
+    const { project, hasDocuments, archived } = req.query;
 
     let sessions;
     if (hasDocuments === 'true') {
@@ -17,7 +18,7 @@ router.get('/', (req, res) => {
       // project can be a project_id or 'unassigned' (null)
       sessions = SessionService.getByProject(project === 'unassigned' ? null : project);
     } else {
-      sessions = SessionService.getAll();
+      sessions = SessionService.getAll({ archived: archived === 'true' });
     }
 
     res.json(sessions);
@@ -94,7 +95,7 @@ router.get('/:id/export/pdf', async (req, res) => {
   }
 });
 
-// PUT /api/sessions/:id - Update session (e.g., project assignment)
+// PUT /api/sessions/:id - Update session (project, title, pinned, archived)
 router.put('/:id', (req, res) => {
   try {
     const session = SessionService.getById(req.params.id);
@@ -102,14 +103,66 @@ router.put('/:id', (req, res) => {
       return res.status(404).json({ error: 'Session not found' });
     }
 
-    const { project_id } = req.body;
+    const { project_id, title, pinned, archived } = req.body;
 
     if (project_id !== undefined) {
       SessionService.setProject(req.params.id, project_id || null);
     }
 
+    // Handle title, pinned, archived via updateFields
+    const controlFields = {};
+    if (title !== undefined) controlFields.title = title;
+    if (pinned !== undefined) controlFields.pinned = pinned;
+    if (archived !== undefined) controlFields.archived = archived;
+
+    if (Object.keys(controlFields).length > 0) {
+      try {
+        SessionService.updateFields(req.params.id, controlFields);
+      } catch (err) {
+        if (err.status === 403) {
+          return res.status(403).json({ error: err.message });
+        }
+        throw err;
+      }
+    }
+
     const updated = SessionService.getById(req.params.id);
     res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE /api/sessions/:id/context/:contextId - Remove a context item
+router.delete('/:id/context/:contextId', (req, res) => {
+  try {
+    const session = SessionService.getById(req.params.id);
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    const context = ContextService.getById(req.params.contextId);
+    if (!context || context.session_id !== req.params.id) {
+      return res.status(404).json({ error: 'Context item not found' });
+    }
+
+    ContextService.delete(req.params.contextId);
+    res.status(204).send();
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE /api/sessions/:id/context - Remove all context from a session
+router.delete('/:id/context', (req, res) => {
+  try {
+    const session = SessionService.getById(req.params.id);
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    const removed = ContextService.deleteAllForSession(req.params.id);
+    res.json({ removed });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

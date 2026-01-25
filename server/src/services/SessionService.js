@@ -12,8 +12,9 @@ export class SessionService {
    * Get all sessions, ordered by last active
    * Includes first_assistant_snippet for hover preview fallback
    */
-  static getAll() {
+  static getAll({ archived = false } = {}) {
     const db = getDb();
+    const archivedVal = archived ? 1 : 0;
     return db.prepare(`
       SELECT s.*,
              sm.orientation_blurb,
@@ -26,8 +27,9 @@ export class SessionService {
               ORDER BY created_at ASC LIMIT 1) as first_assistant_snippet
       FROM sessions s
       LEFT JOIN session_metadata sm ON s.id = sm.session_id
+      WHERE COALESCE(s.archived, 0) = ?
       ORDER BY s.last_active_at DESC
-    `).all();
+    `).all(archivedVal);
   }
 
   /**
@@ -58,7 +60,7 @@ export class SessionService {
 
   /**
    * Create a new session using the active model profile
-   * Auto-assigns to the default project (General)
+   * Sessions start unassigned (project_id = NULL) — user assigns manually
    * @param {string[]} [contextFromSessions] - Optional array of session IDs to assemble context from
    * @param {string} [continuedFromSessionId] - Optional session ID to create structural link from (no context assembly)
    */
@@ -70,9 +72,7 @@ export class SessionService {
       throw new Error('No active model profile. Please set one first.');
     }
 
-    // Get default project
-    const defaultProject = ProjectService.getDefault();
-    const projectId = defaultProject?.id || null;
+    const projectId = null;
 
     const id = generatePrefixedId('ses');
     const timestamp = now();
@@ -181,10 +181,48 @@ export class SessionService {
   }
 
   /**
-   * Delete a session and all its messages/metadata
+   * Update arbitrary session fields (title, pinned, archived)
+   * Validates title_locked before allowing title changes
+   */
+  static updateFields(id, fields) {
+    const db = getDb();
+    const session = this.getById(id);
+    if (!session) throw new Error('Session not found');
+
+    if (fields.title !== undefined && session.title_locked) {
+      const err = new Error('Title is locked on imported sessions');
+      err.status = 403;
+      throw err;
+    }
+
+    const allowed = ['title', 'pinned', 'archived'];
+    const updates = [];
+    const values = [];
+
+    for (const key of allowed) {
+      if (fields[key] !== undefined) {
+        updates.push(`${key} = ?`);
+        values.push(fields[key]);
+      }
+    }
+
+    if (updates.length === 0) return this.getById(id);
+
+    updates.push('updated_at = ?');
+    values.push(now());
+    values.push(id);
+
+    db.prepare(`UPDATE sessions SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+    return this.getById(id);
+  }
+
+  /**
+   * Delete a session and all its messages/metadata/links
    */
   static delete(id) {
     const db = getDb();
+    // Clean up inquiry_links referencing this session (both directions)
+    db.prepare('DELETE FROM inquiry_links WHERE from_session_id = ? OR to_session_id = ?').run(id, id);
     db.prepare('DELETE FROM sessions WHERE id = ?').run(id);
     return true;
   }

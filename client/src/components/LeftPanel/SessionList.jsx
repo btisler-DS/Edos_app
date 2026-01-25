@@ -18,6 +18,11 @@ function SessionList() {
     if (!sessions.length) return sessions;
 
     return [...sessions].sort((a, b) => {
+      // Pinned sessions float to top
+      const aPinned = a.pinned || 0;
+      const bPinned = b.pinned || 0;
+      if (aPinned !== bPinned) return bPinned - aPinned;
+
       if (sessionSortBy === 'created') {
         return new Date(b.created_at) - new Date(a.created_at);
       }

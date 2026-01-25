@@ -16,6 +16,7 @@ import projectsRouter from './routes/projects.js';
 import similarityRouter from './routes/similarity.js';
 import inquiryLinksRouter from './routes/inquiryLinks.js';
 import importRouter from './routes/import.js';
+import searchRouter from './routes/search.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -34,6 +35,7 @@ app.use('/api/upload', uploadRouter);
 app.use('/api/similarity', similarityRouter);
 app.use('/api/inquiry-links', inquiryLinksRouter);
 app.use('/api/import', importRouter);
+app.use('/api/search', searchRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {

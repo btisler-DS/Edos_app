@@ -57,6 +57,24 @@ export class ContextService {
   }
 
   /**
+   * Delete a context item by ID
+   */
+  static delete(id) {
+    const db = getDb();
+    db.prepare('DELETE FROM session_context WHERE id = ?').run(id);
+    return true;
+  }
+
+  /**
+   * Delete all context for a session
+   */
+  static deleteAllForSession(sessionId) {
+    const db = getDb();
+    const result = db.prepare('DELETE FROM session_context WHERE session_id = ?').run(sessionId);
+    return result.changes;
+  }
+
+  /**
    * Get formatted context string for LLM inclusion
    */
   static getFormattedContext(sessionId) {

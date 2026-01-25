@@ -3,6 +3,7 @@ import { useAppStore } from './store/appStore';
 import LeftPanel from './components/LeftPanel/LeftPanel';
 import MainWindow from './components/MainWindow/MainWindow';
 import ModelProfileIndicator from './components/ModelProfileIndicator';
+import AssemblyPreviewModal from './components/AssemblyPreviewModal';
 
 const MOBILE_BREAKPOINT = 768;
 
@@ -140,6 +141,7 @@ function App() {
           <button style={styles.errorClose} onClick={clearError}>×</button>
         </div>
       )}
+      <AssemblyPreviewModal />
     </div>
   );
 }

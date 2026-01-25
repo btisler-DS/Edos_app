@@ -22,6 +22,9 @@ export const useAppStore = create((set, get) => ({
   selectedProjectFilter: null, // null = all, 'unassigned', or project_id
   filterHasDocuments: false,
 
+  // Archive view toggle
+  showArchived: false,
+
   // Related Sessions (semantic similarity)
   relatedSessions: [],
   relatedSessionsLoading: false,
@@ -34,6 +37,16 @@ export const useAppStore = create((set, get) => ({
   contextAssemblyMode: false,
   selectedForAssembly: [], // Array of session IDs
 
+  // Retrieve Mode (search and assembly)
+  retrieveMode: false,
+  searchType: 'keyword', // 'keyword', 'date', 'concept'
+  searchQuery: '',
+  searchStartDate: null,
+  searchEndDate: null,
+  searchResults: [],
+  searchLoading: false,
+  searchSelections: [], // Array of session IDs selected from search results
+
   // Actions
   setError: (error) => set({ error }),
   clearError: () => set({ error: null }),
@@ -41,6 +54,62 @@ export const useAppStore = create((set, get) => ({
   toggleLeftPanel: () => set((state) => ({ leftPanelCollapsed: !state.leftPanelCollapsed })),
   setProjectFilter: (projectId) => set({ selectedProjectFilter: projectId }),
   setFilterHasDocuments: (value) => set({ filterHasDocuments: value }),
+
+  // Session control actions (pin, archive, rename)
+  pinSession: async (id) => {
+    try {
+      await api.updateSession(id, { pinned: 1 });
+      await get().loadSessions();
+    } catch (error) {
+      set({ error: error.message });
+    }
+  },
+
+  unpinSession: async (id) => {
+    try {
+      await api.updateSession(id, { pinned: 0 });
+      await get().loadSessions();
+    } catch (error) {
+      set({ error: error.message });
+    }
+  },
+
+  archiveSession: async (id) => {
+    try {
+      await api.updateSession(id, { archived: 1 });
+      const { activeSessionId } = get();
+      if (activeSessionId === id) {
+        set({ activeSessionId: null, messages: [] });
+      }
+      await get().loadSessions();
+    } catch (error) {
+      set({ error: error.message });
+    }
+  },
+
+  unarchiveSession: async (id) => {
+    try {
+      await api.updateSession(id, { archived: 0 });
+      await get().loadSessions();
+    } catch (error) {
+      set({ error: error.message });
+    }
+  },
+
+  renameSession: async (id, newTitle) => {
+    try {
+      await api.updateSession(id, { title: newTitle });
+      await get().loadSessions();
+    } catch (error) {
+      set({ error: error.message });
+      throw error;
+    }
+  },
+
+  toggleShowArchived: () => {
+    set((state) => ({ showArchived: !state.showArchived }));
+    setTimeout(() => get().loadSessions(), 0);
+  },
 
   // Load initial data
   initialize: async () => {
@@ -83,6 +152,16 @@ export const useAppStore = create((set, get) => ({
     }
   },
 
+  renameProject: async (projectId, name) => {
+    try {
+      await api.updateProject(projectId, { name });
+      await get().loadProjects();
+    } catch (error) {
+      set({ error: error.message });
+      throw error;
+    }
+  },
+
   deleteProject: async (projectId) => {
     try {
       await api.deleteProject(projectId);
@@ -111,13 +190,16 @@ export const useAppStore = create((set, get) => ({
   // Sessions
   loadSessions: async () => {
     try {
-      const { selectedProjectFilter, filterHasDocuments } = get();
+      const { selectedProjectFilter, filterHasDocuments, showArchived } = get();
       const filters = {};
       if (selectedProjectFilter !== null) {
         filters.project = selectedProjectFilter;
       }
       if (filterHasDocuments) {
         filters.hasDocuments = true;
+      }
+      if (showArchived) {
+        filters.archived = true;
       }
       const sessions = await api.getSessions(filters);
       set({ sessions });
@@ -354,6 +436,31 @@ export const useAppStore = create((set, get) => ({
     }
   },
 
+  // Context Management (remove/clear assembled items)
+  removeContext: async (contextId) => {
+    const { activeSessionId } = get();
+    if (!activeSessionId) return;
+    try {
+      await api.deleteContext(activeSessionId, contextId);
+      // Refresh session to update documents list
+      const session = await api.getSession(activeSessionId);
+      set({ documents: session.documents || [] });
+    } catch (error) {
+      set({ error: error.message });
+    }
+  },
+
+  clearAllContext: async () => {
+    const { activeSessionId } = get();
+    if (!activeSessionId) return;
+    try {
+      await api.deleteAllContext(activeSessionId);
+      set({ documents: [] });
+    } catch (error) {
+      set({ error: error.message });
+    }
+  },
+
   // Context Assembly Mode
   setContextAssemblyMode: (enabled) => set({
     contextAssemblyMode: enabled,
@@ -368,25 +475,25 @@ export const useAppStore = create((set, get) => ({
 
   clearAssemblySelection: () => set({ selectedForAssembly: [] }),
 
-  composeFromAssembly: async () => {
-    const { selectedForAssembly } = get();
+  composeFromAssembly: () => {
+    const { selectedForAssembly, sessions, projects } = get();
     if (selectedForAssembly.length < 2) return;
 
-    set({ isLoading: true });
-    try {
-      const session = await api.createSession({ contextFromSessions: selectedForAssembly });
-      // Reset assembly mode first
-      set({
-        contextAssemblyMode: false,
-        selectedForAssembly: [],
-      });
-      // Then properly select the new session (this loads all session data)
-      await get().selectSession(session.id);
-      // Refresh sessions list
-      await get().loadSessions();
-    } catch (error) {
-      set({ error: error.message, isLoading: false });
-    }
+    // Build preview items from selected sessions
+    const items = selectedForAssembly.map(id => {
+      const session = sessions.find(s => s.id === id);
+      const project = session?.project_id ? projects.find(p => p.id === session.project_id) : null;
+      return {
+        sessionId: id,
+        title: session?.title || 'Untitled Inquiry',
+        timestamp: session?.last_active_at || session?.created_at,
+        snippet: session?.first_assistant_snippet || '',
+        projectId: session?.project_id || null,
+        projectName: project?.name || null,
+      };
+    });
+
+    get().showAssemblyPreview(items, 'assembly');
   },
 
   // Import
@@ -407,4 +514,125 @@ export const useAppStore = create((set, get) => ({
   },
 
   clearImportStatus: () => set({ importStatus: null }),
+
+  // Assembly Preview
+  assemblyPreview: null, // { items: [], source: 'search' | 'assembly' } when modal open
+
+  showAssemblyPreview: (items, source) => set({ assemblyPreview: { items, source } }),
+  hideAssemblyPreview: () => set({ assemblyPreview: null }),
+
+  confirmAssembly: async () => {
+    const { assemblyPreview } = get();
+    if (!assemblyPreview) return;
+
+    const sessionIds = assemblyPreview.items.map(i => i.sessionId);
+    set({ isLoading: true, assemblyPreview: null });
+
+    try {
+      const session = await api.createSession({ contextFromSessions: sessionIds });
+      // Reset modes
+      set({
+        contextAssemblyMode: false,
+        selectedForAssembly: [],
+        retrieveMode: false,
+        searchResults: [],
+        searchSelections: [],
+      });
+      await get().selectSession(session.id);
+      await get().loadSessions();
+    } catch (error) {
+      set({ error: error.message, isLoading: false });
+    }
+  },
+
+  // Retrieve Mode Actions
+  setRetrieveMode: (enabled) => set({
+    retrieveMode: enabled,
+    searchResults: enabled ? get().searchResults : [],
+    searchSelections: [],
+  }),
+
+  setSearchType: (type) => set({ searchType: type, searchResults: [], searchSelections: [] }),
+
+  setSearchQuery: (query) => set({ searchQuery: query }),
+
+  setSearchDateRange: (startDate, endDate) => set({
+    searchStartDate: startDate,
+    searchEndDate: endDate,
+  }),
+
+  performSearch: async () => {
+    const { searchType, searchQuery, searchStartDate, searchEndDate, selectedProjectFilter } = get();
+    set({ searchLoading: true, searchResults: [], searchSelections: [] });
+
+    // Pass project filter to search if set
+    const projectId = selectedProjectFilter || undefined;
+
+    try {
+      let results = [];
+
+      if (searchType === 'keyword') {
+        if (!searchQuery.trim()) {
+          set({ searchLoading: false });
+          return;
+        }
+        results = await api.searchKeyword(searchQuery, { limit: 25, projectId });
+      } else if (searchType === 'date') {
+        results = await api.searchByDate({
+          startDate: searchStartDate,
+          endDate: searchEndDate,
+          limit: 25,
+          projectId,
+        });
+      } else if (searchType === 'concept') {
+        if (!searchQuery.trim()) {
+          set({ searchLoading: false });
+          return;
+        }
+        results = await api.searchConcept(searchQuery, { limit: 25, projectId });
+      }
+
+      set({ searchResults: results, searchLoading: false });
+    } catch (error) {
+      console.error('Search failed:', error);
+      set({ error: error.message, searchLoading: false });
+    }
+  },
+
+  toggleSearchSelection: (sessionId) => set((state) => ({
+    searchSelections: state.searchSelections.includes(sessionId)
+      ? state.searchSelections.filter((id) => id !== sessionId)
+      : [...state.searchSelections, sessionId],
+  })),
+
+  clearSearchSelections: () => set({ searchSelections: [] }),
+
+  clearSearchResults: () => set({
+    searchResults: [],
+    searchSelections: [],
+    searchQuery: '',
+    searchStartDate: null,
+    searchEndDate: null,
+  }),
+
+  assembleFromSearch: () => {
+    const { searchSelections, searchResults, projects } = get();
+    if (searchSelections.length < 1) return;
+
+    // Build preview items from search results
+    const items = searchSelections.map(id => {
+      const result = searchResults.find(r => r.sessionId === id);
+      const project = result?.projectId ? projects.find(p => p.id === result.projectId) : null;
+      return {
+        sessionId: id,
+        title: result?.title || 'Untitled Inquiry',
+        timestamp: result?.timestamp,
+        snippet: result?.snippet || '',
+        projectId: result?.projectId || null,
+        projectName: project?.name || null,
+      };
+    });
+
+    get().showAssemblyPreview(items, 'search');
+  },
 }));

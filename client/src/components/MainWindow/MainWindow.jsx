@@ -83,10 +83,12 @@ const styles = {
     padding: '8px 16px',
     background: '#1a1a2e',
     borderBottom: '1px solid #2a2a4a',
+  },
+  contextHeader: {
     display: 'flex',
-    flexWrap: 'wrap',
-    gap: '8px',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: '6px',
   },
   contextLabel: {
     fontSize: '11px',
@@ -94,7 +96,22 @@ const styles = {
     color: '#666',
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
-    marginRight: '4px',
+  },
+  contextClearAll: {
+    background: 'transparent',
+    border: 'none',
+    color: '#666',
+    fontSize: '11px',
+    cursor: 'pointer',
+    padding: '2px 6px',
+    borderRadius: '3px',
+    transition: 'color 0.15s',
+  },
+  contextItems: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+    alignItems: 'center',
   },
   contextItem: {
     display: 'inline-flex',
@@ -111,6 +128,18 @@ const styles = {
   contextItemAssembled: {
     background: '#3b1f5e',
     color: '#c4b5fd',
+  },
+  contextRemove: {
+    background: 'transparent',
+    border: 'none',
+    color: 'inherit',
+    cursor: 'pointer',
+    padding: '0 2px',
+    fontSize: '14px',
+    lineHeight: 1,
+    opacity: 0.6,
+    transition: 'opacity 0.15s',
+    marginLeft: '2px',
   },
   continueButton: {
     display: 'flex',
@@ -169,6 +198,8 @@ function MainWindow() {
     inquiryLinks,
     continueInquiry,
     selectSession,
+    removeContext,
+    clearAllContext,
   } = useAppStore();
   const [exporting, setExporting] = useState(false);
   const [exportHover, setExportHover] = useState(false);
@@ -276,19 +307,43 @@ function MainWindow() {
       )}
       {documents && documents.length > 0 && (
         <div style={styles.contextBar}>
-          <span style={styles.contextLabel}>Context:</span>
-          {documents.map((doc) => (
-            <span
-              key={doc.id}
-              style={{
-                ...styles.contextItem,
-                ...(doc.type === 'assembled_sessions' ? styles.contextItemAssembled : styles.contextItemFile),
-              }}
-              title={doc.name}
-            >
-              {doc.type === 'assembled_sessions' ? '○' : '◇'} {doc.name.length > 30 ? doc.name.slice(0, 30) + '...' : doc.name}
+          <div style={styles.contextHeader}>
+            <span style={styles.contextLabel}>
+              This inquiry includes {documents.length} assembled item{documents.length !== 1 ? 's' : ''}
             </span>
-          ))}
+            <button
+              style={styles.contextClearAll}
+              onClick={clearAllContext}
+              onMouseOver={(e) => e.target.style.color = '#f87171'}
+              onMouseOut={(e) => e.target.style.color = '#666'}
+              title="Remove all context"
+            >
+              Clear all
+            </button>
+          </div>
+          <div style={styles.contextItems}>
+            {documents.map((doc) => (
+              <span
+                key={doc.id}
+                style={{
+                  ...styles.contextItem,
+                  ...(doc.type === 'assembled_sessions' ? styles.contextItemAssembled : styles.contextItemFile),
+                }}
+                title={doc.name}
+              >
+                {doc.type === 'assembled_sessions' ? '○' : '◇'} {doc.name.length > 30 ? doc.name.slice(0, 30) + '...' : doc.name}
+                <button
+                  style={styles.contextRemove}
+                  onClick={() => removeContext(doc.id)}
+                  onMouseOver={(e) => e.target.style.opacity = '1'}
+                  onMouseOut={(e) => e.target.style.opacity = '0.6'}
+                  title="Remove this item"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
         </div>
       )}
       <RelatedSessions />

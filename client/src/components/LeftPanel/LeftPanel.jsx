@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { useAppStore } from '../../store/appStore';
 import { uploadFile } from '../../services/api';
 import SessionList from './SessionList';
+import RetrievePanel from './RetrievePanel';
 
 const MOBILE_BREAKPOINT = 768;
 
@@ -224,6 +225,16 @@ const styles = {
     fontSize: '12px',
     color: '#86efac',
   },
+  retrieveButton: {
+    padding: '6px 12px',
+    background: 'transparent',
+    border: '1px solid #3a3a5a',
+    borderRadius: '4px',
+    color: '#888',
+    fontSize: '12px',
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+  },
 };
 
 function LeftPanel() {
@@ -249,10 +260,21 @@ function LeftPanel() {
     importStatus,
     importOpenAIBackup,
     clearImportStatus,
+    retrieveMode,
+    setRetrieveMode,
+    showArchived,
+    toggleShowArchived,
+    createProject,
+    renameProject,
+    deleteProject,
   } = useAppStore();
   const fileInputRef = useRef(null);
   const importInputRef = useRef(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < MOBILE_BREAKPOINT);
+  const [showNewProject, setShowNewProject] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [editingProjectId, setEditingProjectId] = useState(null);
+  const [editingProjectName, setEditingProjectName] = useState('');
 
   useEffect(() => {
     const handleResize = () => {
@@ -311,6 +333,39 @@ function LeftPanel() {
     setTimeout(() => loadSessions(), 0);
   };
 
+  const handleCreateProject = async () => {
+    const name = newProjectName.trim();
+    if (!name) return;
+    try {
+      await createProject(name);
+      setNewProjectName('');
+      setShowNewProject(false);
+    } catch (err) {
+      // error handled in store
+    }
+  };
+
+  const handleRenameProject = async (projectId) => {
+    const name = editingProjectName.trim();
+    if (!name) return;
+    try {
+      await renameProject(projectId, name);
+      setEditingProjectId(null);
+      setEditingProjectName('');
+    } catch (err) {
+      // error handled in store
+    }
+  };
+
+  const handleDeleteProject = async (projectId) => {
+    if (!confirm('Delete this project? Sessions will be unassigned, not deleted.')) return;
+    try {
+      await deleteProject(projectId);
+    } catch (err) {
+      // error handled in store
+    }
+  };
+
   const handleImportClick = () => {
     importInputRef.current?.click();
   };
@@ -332,6 +387,11 @@ function LeftPanel() {
   // On mobile when collapsed, hide completely (will show hamburger in header)
   if (leftPanelCollapsed && isMobile) {
     return null;
+  }
+
+  // Show RetrievePanel when in retrieve mode
+  if (retrieveMode) {
+    return <RetrievePanel />;
   }
 
   // Desktop collapsed state
@@ -431,6 +491,25 @@ function LeftPanel() {
           <button
             style={{
               ...styles.sortOption,
+              ...(!showArchived ? styles.sortOptionActive : {}),
+            }}
+            onClick={() => { if (showArchived) toggleShowArchived(); }}
+          >
+            Active
+          </button>
+          <button
+            style={{
+              ...styles.sortOption,
+              ...(showArchived ? styles.sortOptionActive : {}),
+            }}
+            onClick={() => { if (!showArchived) toggleShowArchived(); }}
+          >
+            Archived
+          </button>
+          <span style={{ borderLeft: '1px solid #2a2a4a', margin: '0 4px' }} />
+          <button
+            style={{
+              ...styles.sortOption,
               ...(sessionSortBy === 'last_active' ? styles.sortOptionActive : {}),
             }}
             onClick={() => setSessionSortBy('last_active')}
@@ -459,7 +538,15 @@ function LeftPanel() {
                 {p.name} ({p.sessionCount || 0})
               </option>
             ))}
+            <option value="unassigned">(No Project)</option>
           </select>
+          <button
+            style={{ ...styles.sortOption, fontSize: '14px', padding: '2px 8px' }}
+            onClick={() => setShowNewProject(!showNewProject)}
+            title="New project"
+          >
+            +
+          </button>
           <label style={styles.filterCheckbox}>
             <input
               type="checkbox"
@@ -469,6 +556,64 @@ function LeftPanel() {
             Docs
           </label>
         </div>
+        {showNewProject && (
+          <div style={{ ...styles.filterBar, gap: '6px' }}>
+            <input
+              style={{ ...styles.filterSelect, flex: 1, padding: '6px 8px' }}
+              value={newProjectName}
+              onChange={(e) => setNewProjectName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleCreateProject(); if (e.key === 'Escape') setShowNewProject(false); }}
+              placeholder="Project name..."
+              autoFocus
+            />
+            <button
+              style={{ ...styles.sortOption, color: '#86efac', fontSize: '12px' }}
+              onClick={handleCreateProject}
+            >
+              Create
+            </button>
+          </div>
+        )}
+        {selectedProjectFilter && selectedProjectFilter !== 'unassigned' && (
+          <div style={{ ...styles.filterBar, gap: '6px', fontSize: '11px' }}>
+            {editingProjectId === selectedProjectFilter ? (
+              <>
+                <input
+                  style={{ ...styles.filterSelect, flex: 1, padding: '4px 6px', fontSize: '11px' }}
+                  value={editingProjectName}
+                  onChange={(e) => setEditingProjectName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleRenameProject(selectedProjectFilter); if (e.key === 'Escape') setEditingProjectId(null); }}
+                  autoFocus
+                />
+                <button
+                  style={{ ...styles.sortOption, color: '#86efac', fontSize: '11px' }}
+                  onClick={() => handleRenameProject(selectedProjectFilter)}
+                >
+                  Save
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  style={{ ...styles.sortOption, fontSize: '11px' }}
+                  onClick={() => {
+                    const proj = projects.find(p => p.id === selectedProjectFilter);
+                    setEditingProjectId(selectedProjectFilter);
+                    setEditingProjectName(proj?.name || '');
+                  }}
+                >
+                  Rename
+                </button>
+                <button
+                  style={{ ...styles.sortOption, fontSize: '11px', color: '#f87171' }}
+                  onClick={() => handleDeleteProject(selectedProjectFilter)}
+                >
+                  Delete Project
+                </button>
+              </>
+            )}
+          </div>
+        )}
         <div style={styles.assemblyBar}>
           <button
             style={contextAssemblyMode ? styles.assembleButtonActive : styles.assembleButton}
@@ -487,6 +632,15 @@ function LeftPanel() {
             }}
           >
             {contextAssemblyMode ? 'Cancel' : 'Assemble'}
+          </button>
+          <button
+            style={styles.retrieveButton}
+            onClick={() => setRetrieveMode(true)}
+            title="Search archived conversations"
+            onMouseOver={(e) => { e.target.style.borderColor = '#4f46e5'; e.target.style.color = '#ccc'; }}
+            onMouseOut={(e) => { e.target.style.borderColor = '#3a3a5a'; e.target.style.color = '#888'; }}
+          >
+            Retrieve
           </button>
           <button
             style={styles.importButton}
