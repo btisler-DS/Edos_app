@@ -1,0 +1,20 @@
+{
+  "name": "EDOS - Persistent Inquiry Environment",
+  "short_name": "EDOS",
+  "description": "A persistent inquiry environment that preserves continuity of thinking across time, interruptions, and devices.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d0d1a",
+  "theme_color": "#4f46e5",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "lang": "en"
+}

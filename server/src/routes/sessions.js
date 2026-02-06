@@ -3,6 +3,8 @@ import { SessionService } from '../services/SessionService.js';
 import { MessageService } from '../services/MessageService.js';
 import { PdfExportService } from '../services/PdfExportService.js';
 import { ContextService } from '../services/ContextService.js';
+import { validateRequest, schemas, sanitizeString } from '../utils/validate.js';
+import { NotFoundError, asyncHandler } from '../utils/errors.js';
 
 const router = Router();
 
@@ -28,17 +30,13 @@ router.get('/', (req, res) => {
 });
 
 // GET /api/sessions/:id - Get session by ID
-router.get('/:id', (req, res) => {
-  try {
-    const session = SessionService.getById(req.params.id);
-    if (!session) {
-      return res.status(404).json({ error: 'Session not found' });
-    }
-    res.json(session);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+router.get('/:id', asyncHandler(async (req, res) => {
+  const session = SessionService.getById(req.params.id);
+  if (!session) {
+    throw NotFoundError.session(req.params.id);
   }
-});
+  res.json(session);
+}));
 
 // POST /api/sessions - Create new session (New Inquiry)
 router.post('/', (req, res) => {
@@ -96,91 +94,68 @@ router.get('/:id/export/pdf', async (req, res) => {
 });
 
 // PUT /api/sessions/:id - Update session (project, title, pinned, archived)
-router.put('/:id', (req, res) => {
-  try {
-    const session = SessionService.getById(req.params.id);
-    if (!session) {
-      return res.status(404).json({ error: 'Session not found' });
-    }
-
-    const { project_id, title, pinned, archived } = req.body;
-
-    if (project_id !== undefined) {
-      SessionService.setProject(req.params.id, project_id || null);
-    }
-
-    // Handle title, pinned, archived via updateFields
-    const controlFields = {};
-    if (title !== undefined) controlFields.title = title;
-    if (pinned !== undefined) controlFields.pinned = pinned;
-    if (archived !== undefined) controlFields.archived = archived;
-
-    if (Object.keys(controlFields).length > 0) {
-      try {
-        SessionService.updateFields(req.params.id, controlFields);
-      } catch (err) {
-        if (err.status === 403) {
-          return res.status(403).json({ error: err.message });
-        }
-        throw err;
-      }
-    }
-
-    const updated = SessionService.getById(req.params.id);
-    res.json(updated);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+router.put('/:id', validateRequest(schemas.updateSession), asyncHandler(async (req, res) => {
+  const session = SessionService.getById(req.params.id);
+  if (!session) {
+    throw NotFoundError.session(req.params.id);
   }
-});
+
+  const { project_id, title, pinned, archived } = req.body;
+
+  if (project_id !== undefined) {
+    SessionService.setProject(req.params.id, project_id || null);
+  }
+
+  // Handle title, pinned, archived via updateFields
+  const controlFields = {};
+  if (title !== undefined) controlFields.title = sanitizeString(title, { maxLength: 200 });
+  if (pinned !== undefined) controlFields.pinned = pinned;
+  if (archived !== undefined) controlFields.archived = archived;
+
+  if (Object.keys(controlFields).length > 0) {
+    SessionService.updateFields(req.params.id, controlFields);
+  }
+
+  const updated = SessionService.getById(req.params.id);
+  res.json(updated);
+}));
 
 // DELETE /api/sessions/:id/context/:contextId - Remove a context item
-router.delete('/:id/context/:contextId', (req, res) => {
-  try {
-    const session = SessionService.getById(req.params.id);
-    if (!session) {
-      return res.status(404).json({ error: 'Session not found' });
-    }
-
-    const context = ContextService.getById(req.params.contextId);
-    if (!context || context.session_id !== req.params.id) {
-      return res.status(404).json({ error: 'Context item not found' });
-    }
-
-    ContextService.delete(req.params.contextId);
-    res.status(204).send();
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+router.delete('/:id/context/:contextId', asyncHandler(async (req, res) => {
+  const session = SessionService.getById(req.params.id);
+  if (!session) {
+    throw NotFoundError.session(req.params.id);
   }
-});
+
+  const context = ContextService.getById(req.params.contextId);
+  if (!context || context.session_id !== req.params.id) {
+    throw NotFoundError.context(req.params.contextId);
+  }
+
+  ContextService.delete(req.params.contextId);
+  res.status(204).send();
+}));
 
 // DELETE /api/sessions/:id/context - Remove all context from a session
-router.delete('/:id/context', (req, res) => {
-  try {
-    const session = SessionService.getById(req.params.id);
-    if (!session) {
-      return res.status(404).json({ error: 'Session not found' });
-    }
-
-    const removed = ContextService.deleteAllForSession(req.params.id);
-    res.json({ removed });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+router.delete('/:id/context', asyncHandler(async (req, res) => {
+  const session = SessionService.getById(req.params.id);
+  if (!session) {
+    throw NotFoundError.session(req.params.id);
   }
-});
+
+  const removed = ContextService.deleteAllForSession(req.params.id);
+  res.json({ removed });
+}));
 
 // DELETE /api/sessions/:id - Delete a session
-router.delete('/:id', (req, res) => {
-  try {
-    const session = SessionService.getById(req.params.id);
-    if (!session) {
-      return res.status(404).json({ error: 'Session not found' });
-    }
-
-    SessionService.delete(req.params.id);
-    res.status(204).send();
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+router.delete('/:id', asyncHandler(async (req, res) => {
+  const session = SessionService.getById(req.params.id);
+  if (!session) {
+    throw NotFoundError.session(req.params.id);
   }
-});
+
+  SessionService.delete(req.params.id);
+  res.status(204).send();
+}));
 
 export default router;

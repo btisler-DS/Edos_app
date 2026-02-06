@@ -39,6 +39,16 @@ export class LLMProvider {
   }
 
   /**
+   * Generate a synthesis from multiple sessions
+   * @param {string} prompt - The synthesis prompt with session data
+   * @param {string} modelId - Optional model ID override
+   * @returns {string} - Synthesized answer
+   */
+  async generateSynthesis(prompt, modelId = null) {
+    throw new Error('generateSynthesis not implemented');
+  }
+
+  /**
    * Get the utility model ID for this provider
    */
   static get UTILITY_MODEL() {

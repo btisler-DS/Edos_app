@@ -48,8 +48,8 @@ router.post('/', (req, res) => {
       return res.status(400).json({ error: 'name, provider, and model_id are required' });
     }
 
-    if (!['anthropic', 'openai'].includes(provider)) {
-      return res.status(400).json({ error: 'provider must be "anthropic" or "openai"' });
+    if (!['anthropic', 'openai', 'ollama'].includes(provider)) {
+      return res.status(400).json({ error: 'provider must be "anthropic", "openai", or "ollama"' });
     }
 
     const profile = ModelProfileService.create({ name, provider, model_id, system_prompt, parameters });

@@ -1,8 +1,94 @@
 import { getDb } from '../db/connection.js';
 import { EmbeddingStore } from './EmbeddingStore.js';
+import { EmbeddingService } from './EmbeddingService.js';
 import { cosineSimilarity } from '../utils/similarity.js';
+import { formatRelativeTime } from '../utils/time.js';
 
 export class SimilarityService {
+  /**
+   * Search for similar sessions by query text
+   * @param {string} query - Search query
+   * @param {string} excludeSessionId - Session ID to exclude (current session)
+   * @param {number} limit - Maximum results to return
+   * @param {number} threshold - Minimum similarity score (0-1)
+   * @returns {Promise<object[]>} Array of similar sessions with metadata
+   */
+  static async searchByQuery(query, excludeSessionId = null, limit = 5, threshold = 0.3) {
+    try {
+      if (!query || query.trim().length < 10) {
+        return [];
+      }
+
+      // Generate embedding for the query
+      const queryEmbedding = await EmbeddingService.embed(query.trim());
+      if (!queryEmbedding) {
+        return [];
+      }
+
+      // Get all session embeddings
+      const allEmbeddings = EmbeddingStore.getAllByType('session_summary');
+      if (allEmbeddings.length === 0) {
+        return [];
+      }
+
+      const db = getDb();
+
+      // Calculate similarities
+      const similarities = [];
+      for (const embedding of allEmbeddings) {
+        // Skip excluded session
+        if (embedding.source_id === excludeSessionId) {
+          continue;
+        }
+
+        const score = cosineSimilarity(queryEmbedding.vector, embedding.vector);
+
+        // Only include if above threshold
+        if (score >= threshold) {
+          similarities.push({
+            sessionId: embedding.source_id,
+            score,
+          });
+        }
+      }
+
+      // Sort by score descending and take top N
+      similarities.sort((a, b) => b.score - a.score);
+      const topResults = similarities.slice(0, limit);
+
+      // Enrich with session data and metadata
+      return topResults.map(result => {
+        const session = db.prepare(
+          'SELECT id, title, created_at, last_active_at FROM sessions WHERE id = ?'
+        ).get(result.sessionId);
+
+        const metadata = db.prepare(
+          'SELECT orientation_blurb, unresolved_edge FROM session_metadata WHERE session_id = ?'
+        ).get(result.sessionId);
+
+        if (!session) return null;
+
+        // Calculate relative time
+        const timestamp = session.last_active_at || session.created_at;
+        const relativeTime = formatRelativeTime(timestamp);
+
+        return {
+          id: result.sessionId,
+          type: 'session',
+          score: Math.round(result.score * 100) / 100,
+          title: session.title || 'Untitled',
+          timestamp,
+          relativeTime,
+          preview: metadata?.orientation_blurb || null,
+          hasUnresolved: !!metadata?.unresolved_edge,
+        };
+      }).filter(Boolean);
+    } catch (error) {
+      console.error('[SimilarityService] searchByQuery failed:', error.message);
+      return [];
+    }
+  }
+
   /**
    * Find sessions similar to the given session
    * @param {string} sessionId - Source session ID

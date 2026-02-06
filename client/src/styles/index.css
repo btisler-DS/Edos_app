@@ -1,0 +1,221 @@
+/* EDOS Global Styles */
+
+:root {
+  /* Backgrounds */
+  --bg-deep: #0d0d1a;
+  --bg-base: #12122a;
+  --bg-surface: #16162a;
+  --bg-elevated: #1a1a3a;
+  --bg-input: #1e1e3a;
+  --bg-hover: #2a2a4a;
+  --bg-selected: #2a2a5a;
+
+  /* Borders */
+  --border-subtle: #1a1a3a;
+  --border-default: #2a2a4a;
+  --border-strong: #3a3a5a;
+
+  /* Text */
+  --text-primary: #eeeeee;
+  --text-secondary: #cccccc;
+  --text-muted: #888888;
+  --text-faint: #666666;
+
+  /* Accent */
+  --accent-primary: #4f46e5;
+  --accent-primary-hover: #4338ca;
+  --accent-light: #a5b4fc;
+
+  /* Semantic - Success */
+  --success-bg: #1a2a1a;
+  --success-border: #2a4a2a;
+  --success-text: #86efac;
+  --success-solid: #059669;
+  --success-solid-hover: #047857;
+
+  /* Semantic - Error */
+  --error-bg: #2a1a1a;
+  --error-border: #4a2a2a;
+  --error-text: #fca5a5;
+  --error-text-strong: #f87171;
+  --error-solid: #ff4757;
+
+  /* Semantic - Info */
+  --info-bg: #1a2a3a;
+  --info-border: #2a3a4a;
+  --info-text: #7dd3fc;
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 20px;
+
+  /* Radius */
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
+  --radius-xxl: 12px;
+
+  /* Transitions */
+  --transition-fast: 0.15s;
+  --transition-normal: 0.2s;
+}
+
+/* Base reset and defaults */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-base);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--radius-md);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-faint);
+}
+
+/* Selection */
+::selection {
+  background: var(--accent-primary);
+  color: white;
+}
+
+/* Focus visible for accessibility */
+:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* Common animations */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateY(-10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Utility classes */
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-fade-in {
+  animation: fadeIn var(--transition-normal) ease-out;
+}
+
+.animate-slide-in {
+  animation: slideIn var(--transition-normal) ease-out;
+}
+
+/* Mobile responsive improvements */
+@media (max-width: 768px) {
+  /* Ensure minimum touch target size (44px) */
+  button,
+  input[type="checkbox"],
+  select,
+  a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Improve form inputs on mobile */
+  input, textarea, select {
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
+
+  /* Better spacing for mobile */
+  :root {
+    --space-lg: 12px;
+    --space-xl: 16px;
+  }
+
+  /* Hide scrollbars on mobile (still scrollable) */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  /* Larger tap targets for touch */
+  button {
+    padding: 12px 16px;
+  }
+
+  /* Remove hover effects that look weird on touch */
+  button:hover,
+  a:hover {
+    transform: none;
+  }
+}
+
+/* Safe area insets for notched phones */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* Prevent text selection during drag/swipe */
+.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Improve text rendering */
+body {
+  text-rendering: optimizeLegibility;
+}
+
+/* Better focus states for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

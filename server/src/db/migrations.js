@@ -7,6 +7,9 @@ import { generatePrefixedId } from '../utils/ids.js';
 export function runMigrations() {
   const db = getDb();
 
+  // Migration: Add settings table for auth and configuration
+  migrateSettings(db);
+
   // Migration: Add projects table and project_id to sessions
   migrateProjects(db);
 
@@ -24,6 +27,9 @@ export function runMigrations() {
 
   // Migration: Add session control columns (pinned, archived, title_locked)
   migrateSessionControls(db);
+
+  // Migration: Add web_search source_type to session_context
+  migrateWebSearchSourceType(db);
 
   // Check if messages table has the old constraint (only user/assistant)
   // by trying to insert a system message
@@ -70,6 +76,30 @@ export function runMigrations() {
     }
   } catch (error) {
     console.error('Migration error:', error.message);
+  }
+}
+
+/**
+ * Migration: Add settings table for authentication and configuration
+ */
+function migrateSettings(db) {
+  try {
+    const table = db.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='settings'"
+    ).get();
+
+    if (!table) {
+      db.exec(`
+        CREATE TABLE settings (
+          key TEXT PRIMARY KEY,
+          value TEXT NOT NULL,
+          updated_at TEXT DEFAULT (datetime('now'))
+        )
+      `);
+      console.log('Migration: Created settings table');
+    }
+  } catch (error) {
+    console.error('Settings migration error:', error.message);
   }
 }
 
@@ -329,5 +359,60 @@ function migrateSessionControls(db) {
     }
   } catch (error) {
     console.error('Session controls migration error:', error.message);
+  }
+}
+
+/**
+ * Migration: Add web_search source_type to session_context
+ * Enables storing web search results as session context
+ */
+function migrateWebSearchSourceType(db) {
+  try {
+    // Check if session_context table exists
+    const tableInfo = db.prepare("PRAGMA table_info(session_context)").all();
+    if (tableInfo.length === 0) return; // Table doesn't exist yet
+
+    // Try to insert a test row to check if web_search is allowed
+    // If it fails, we need to migrate the table
+    try {
+      // Create new table with updated constraint
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS session_context_ws (
+          id TEXT PRIMARY KEY,
+          session_id TEXT NOT NULL,
+          source_type TEXT NOT NULL CHECK (source_type IN ('file_upload', 'assembled_sessions', 'web_search', 'url_fetch')),
+          source_name TEXT NOT NULL,
+          content TEXT NOT NULL,
+          created_at TEXT DEFAULT (datetime('now')),
+          FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+        )
+      `);
+
+      // Copy existing data
+      db.exec(`
+        INSERT OR IGNORE INTO session_context_ws (id, session_id, source_type, source_name, content, created_at)
+        SELECT id, session_id, source_type, source_name, content, created_at FROM session_context
+      `);
+
+      // Drop old table and rename new
+      db.exec('DROP TABLE session_context');
+      db.exec('ALTER TABLE session_context_ws RENAME TO session_context');
+
+      // Recreate index
+      db.exec('CREATE INDEX IF NOT EXISTS idx_context_session ON session_context(session_id)');
+
+      console.log('Migration: Updated session_context to allow web_search source_type');
+    } catch (e) {
+      if (e.message.includes('already exists') || e.message.includes('no such table')) {
+        // Migration already complete or table doesn't need migration
+      } else if (e.message.includes('UNIQUE constraint')) {
+        // Data already migrated
+        db.exec('DROP TABLE IF EXISTS session_context_ws');
+      } else {
+        throw e;
+      }
+    }
+  } catch (error) {
+    console.error('Web search source type migration error:', error.message);
   }
 }

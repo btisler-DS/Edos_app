@@ -1,11 +1,35 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAppStore } from '../../store/appStore';
+import ContextSuggestions from './ContextSuggestions';
 
 const styles = {
   container: {
     padding: '12px 12px 16px',
     borderTop: '1px solid #2a2a4a',
     background: '#16162a',
+  },
+  searchIndicator: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    padding: '8px 16px',
+    marginBottom: '8px',
+    background: 'rgba(79, 70, 229, 0.1)',
+    border: '1px solid rgba(79, 70, 229, 0.3)',
+    borderRadius: '8px',
+    fontSize: '13px',
+    color: '#a5b4fc',
+    maxWidth: '800px',
+    margin: '0 auto 8px',
+  },
+  searchSpinner: {
+    width: '14px',
+    height: '14px',
+    border: '2px solid rgba(165, 180, 252, 0.3)',
+    borderTop: '2px solid #a5b4fc',
+    borderRadius: '50%',
+    animation: 'spin 1s linear infinite',
   },
   form: {
     display: 'flex',
@@ -64,7 +88,15 @@ function InputArea() {
   const [input, setInput] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const textareaRef = useRef(null);
-  const { sendMessage, isStreaming } = useAppStore();
+  const {
+    sendMessage,
+    isStreaming,
+    isWebSearching,
+    webSearchQuery,
+    isUrlFetching,
+    urlFetchCount,
+    loadSession,
+  } = useAppStore();
 
   // Auto-resize textarea
   useEffect(() => {
@@ -91,10 +123,60 @@ function InputArea() {
     }
   };
 
+  // Navigate to a suggested session
+  const handleNavigateToSession = useCallback((sessionId) => {
+    loadSession(sessionId);
+  }, [loadSession]);
+
+  // Inject context from a suggested session
+  const handleInjectContext = useCallback((suggestion) => {
+    // Prepend a reference to the suggested session in the input
+    const contextNote = `[Continuing from "${suggestion.title}" (${suggestion.relativeTime})]\n\n`;
+    setInput(prev => contextNote + prev);
+
+    // Focus the textarea
+    textareaRef.current?.focus();
+  }, []);
+
   const canSubmit = input.trim() && !isStreaming;
 
   return (
     <div style={styles.container}>
+      {/* CSS keyframes for spinner animation */}
+      <style>
+        {`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}
+      </style>
+
+      {/* Web search indicator */}
+      {isWebSearching && (
+        <div style={styles.searchIndicator}>
+          <div style={styles.searchSpinner} />
+          <span>Searching: "{webSearchQuery}"</span>
+        </div>
+      )}
+
+      {/* URL fetch indicator */}
+      {isUrlFetching && (
+        <div style={styles.searchIndicator}>
+          <div style={styles.searchSpinner} />
+          <span>Fetching {urlFetchCount} URL{urlFetchCount > 1 ? 's' : ''}...</span>
+        </div>
+      )}
+
+      {/* Context suggestions based on what user is typing */}
+      {!isStreaming && (
+        <ContextSuggestions
+          query={input}
+          onNavigate={handleNavigateToSession}
+          onInjectContext={handleInjectContext}
+        />
+      )}
+
       <form style={styles.form} onSubmit={handleSubmit}>
         <div style={styles.textareaWrapper}>
           <textarea

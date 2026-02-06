@@ -13,6 +13,7 @@ const AVAILABLE_MODELS = {
     { id: 'gpt-4-turbo', name: 'GPT-4 Turbo' },
     { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo' },
   ],
+  ollama: [], // Populated dynamically
 };
 
 const styles = {
@@ -187,11 +188,36 @@ function SettingsModal({ isOpen, onClose }) {
   });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [ollamaModels, setOllamaModels] = useState([]);
+  const [ollamaAvailable, setOllamaAvailable] = useState(false);
+  const [loadingOllama, setLoadingOllama] = useState(false);
 
-  // Load profiles on mount
+  // Load Ollama models
+  const loadOllamaModels = async () => {
+    setLoadingOllama(true);
+    try {
+      const response = await fetch('/api/ollama/models');
+      const data = await response.json();
+      setOllamaAvailable(data.available);
+      if (data.available && data.models) {
+        setOllamaModels(data.models.map(m => ({
+          id: m.name,
+          name: m.name,
+        })));
+      }
+    } catch (error) {
+      console.error('Failed to load Ollama models:', error);
+      setOllamaAvailable(false);
+    } finally {
+      setLoadingOllama(false);
+    }
+  };
+
+  // Load profiles and Ollama models on mount
   useEffect(() => {
     if (isOpen) {
       loadProfiles();
+      loadOllamaModels();
     }
   }, [isOpen]);
 
@@ -231,7 +257,12 @@ function SettingsModal({ isOpen, onClose }) {
   };
 
   const handleProviderChange = (provider) => {
-    const models = AVAILABLE_MODELS[provider];
+    let models;
+    if (provider === 'ollama') {
+      models = ollamaModels;
+    } else {
+      models = AVAILABLE_MODELS[provider];
+    }
     setFormData(prev => ({
       ...prev,
       provider,
@@ -274,7 +305,9 @@ function SettingsModal({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
-  const availableModels = AVAILABLE_MODELS[formData.provider] || [];
+  const availableModels = formData.provider === 'ollama'
+    ? ollamaModels
+    : (AVAILABLE_MODELS[formData.provider] || []);
 
   return (
     <div style={styles.overlay} onClick={onClose}>
@@ -324,19 +357,47 @@ function SettingsModal({ isOpen, onClose }) {
                 >
                   <option value="anthropic">Anthropic</option>
                   <option value="openai">OpenAI</option>
+                  <option value="ollama" disabled={!ollamaAvailable}>
+                    Ollama (Local){!ollamaAvailable && ' - Not Available'}
+                  </option>
                 </select>
+                {formData.provider === 'ollama' && loadingOllama && (
+                  <p style={styles.hint}>Loading Ollama models...</p>
+                )}
               </div>
               <div style={styles.col}>
                 <label style={styles.label}>Model</label>
-                <select
-                  style={styles.select}
-                  value={formData.model_id}
-                  onChange={(e) => setFormData(prev => ({ ...prev, model_id: e.target.value }))}
-                >
-                  {availableModels.map(model => (
-                    <option key={model.id} value={model.id}>{model.name}</option>
-                  ))}
-                </select>
+                {formData.provider === 'ollama' ? (
+                  <>
+                    <select
+                      style={styles.select}
+                      value={formData.model_id}
+                      onChange={(e) => setFormData(prev => ({ ...prev, model_id: e.target.value }))}
+                    >
+                      {availableModels.length === 0 && (
+                        <option value="">No models found</option>
+                      )}
+                      {availableModels.map(model => (
+                        <option key={model.id} value={model.id}>{model.name}</option>
+                      ))}
+                    </select>
+                    {availableModels.length === 0 && (
+                      <p style={styles.hint}>
+                        Pull a model with: ollama pull llama3.2:latest
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <select
+                    style={styles.select}
+                    value={formData.model_id}
+                    onChange={(e) => setFormData(prev => ({ ...prev, model_id: e.target.value }))}
+                  >
+                    {availableModels.map(model => (
+                      <option key={model.id} value={model.id}>{model.name}</option>
+                    ))}
+                  </select>
+                )}
               </div>
             </div>
           </div>

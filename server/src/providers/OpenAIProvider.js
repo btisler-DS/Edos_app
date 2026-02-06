@@ -100,4 +100,24 @@ export class OpenAIProvider extends LLMProvider {
       return null;
     }
   }
+
+  async generateSynthesis(prompt, modelId = null) {
+    try {
+      const response = await this.client.chat.completions.create({
+        model: modelId || OpenAIProvider.UTILITY_MODEL,
+        max_tokens: 2048,
+        messages: [
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+      });
+
+      return response.choices[0].message.content.trim();
+    } catch (error) {
+      console.error('Synthesis generation failed:', error);
+      throw new Error('Failed to generate synthesis: ' + error.message);
+    }
+  }
 }

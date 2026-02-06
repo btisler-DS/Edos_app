@@ -91,4 +91,24 @@ export class AnthropicProvider extends LLMProvider {
       return null;
     }
   }
+
+  async generateSynthesis(prompt, modelId = null) {
+    try {
+      const response = await this.client.messages.create({
+        model: modelId || AnthropicProvider.UTILITY_MODEL,
+        max_tokens: 2048,
+        messages: [
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+      });
+
+      return response.content[0].text.trim();
+    } catch (error) {
+      console.error('Synthesis generation failed:', error);
+      throw new Error('Failed to generate synthesis: ' + error.message);
+    }
+  }
 }

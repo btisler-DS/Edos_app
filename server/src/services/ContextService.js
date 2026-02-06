@@ -37,6 +37,48 @@ export class ContextService {
   }
 
   /**
+   * Add web search results as context
+   * @param {string} sessionId - Session ID
+   * @param {string} query - The search query
+   * @param {object[]} results - Normalized search results
+   * @param {string} formattedContent - Pre-formatted content for LLM
+   */
+  static addWebSearchContext(sessionId, query, results, formattedContent) {
+    const db = getDb();
+    const id = generatePrefixedId('ctx');
+    const timestamp = now();
+    const sourceName = `Web Search: "${query}"`;
+
+    db.prepare(`
+      INSERT INTO session_context (id, session_id, source_type, source_name, content, created_at)
+      VALUES (?, ?, 'web_search', ?, ?, ?)
+    `).run(id, sessionId, sourceName, formattedContent, timestamp);
+
+    return this.getById(id);
+  }
+
+  /**
+   * Add fetched URL content as context
+   * @param {string} sessionId - Session ID
+   * @param {string} url - The source URL
+   * @param {string} title - Page title
+   * @param {string} formattedContent - Pre-formatted content for LLM
+   */
+  static addUrlFetchContext(sessionId, url, title, formattedContent) {
+    const db = getDb();
+    const id = generatePrefixedId('ctx');
+    const timestamp = now();
+    const sourceName = title || url;
+
+    db.prepare(`
+      INSERT INTO session_context (id, session_id, source_type, source_name, content, created_at)
+      VALUES (?, ?, 'url_fetch', ?, ?, ?)
+    `).run(id, sessionId, sourceName, formattedContent, timestamp);
+
+    return this.getById(id);
+  }
+
+  /**
    * Get context by ID
    */
   static getById(id) {
@@ -87,6 +129,16 @@ export class ContextService {
     return contexts.map(ctx => {
       if (ctx.source_type === 'assembled_sessions') {
         // Assembled context already formatted
+        return ctx.content;
+      }
+      if (ctx.source_type === 'web_search') {
+        // Web search context is pre-formatted with attribution
+        // Already includes --- Web Search Results --- markers
+        return ctx.content;
+      }
+      if (ctx.source_type === 'url_fetch') {
+        // URL fetch context is pre-formatted with source attribution
+        // Already includes --- Web Page --- markers
         return ctx.content;
       }
       // File upload context

@@ -5,8 +5,13 @@ import { initializeSchema } from './db/connection.js';
 import { seedDatabase } from './db/seed.js';
 import { runMigrations } from './db/migrations.js';
 import { startMetadataRefreshJob, stopMetadataRefreshJob } from './jobs/metadataRefresh.js';
+import { errorHandler } from './utils/errors.js';
+import { requireAuth } from './middleware/auth.js';
+import { isOllamaAvailable, listOllamaModels } from './providers/index.js';
+import { EmbeddingService } from './services/EmbeddingService.js';
 
 // Routes
+import authRouter from './routes/auth.js';
 import profilesRouter from './routes/profiles.js';
 import sessionsRouter from './routes/sessions.js';
 import messagesRouter from './routes/messages.js';
@@ -17,6 +22,11 @@ import similarityRouter from './routes/similarity.js';
 import inquiryLinksRouter from './routes/inquiryLinks.js';
 import importRouter from './routes/import.js';
 import searchRouter from './routes/search.js';
+import synthesisRouter from './routes/synthesis.js';
+import insightsRouter from './routes/insights.js';
+import exportRouter from './routes/export.js';
+import backupRouter from './routes/backup.js';
+import { BackupService } from './services/BackupService.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -25,35 +35,58 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// API Routes
-app.use('/api/profiles', profilesRouter);
-app.use('/api/projects', projectsRouter);
-app.use('/api/sessions', sessionsRouter);
-app.use('/api/sessions', messagesRouter); // Message routes are under /api/sessions/:sessionId/messages
-app.use('/api/sessions', anchorsRouter);  // Anchor routes are under /api/sessions/:sessionId/anchors
-app.use('/api/upload', uploadRouter);
-app.use('/api/similarity', similarityRouter);
-app.use('/api/inquiry-links', inquiryLinksRouter);
-app.use('/api/import', importRouter);
-app.use('/api/search', searchRouter);
+// Public routes (no auth required)
+app.use('/api/auth', authRouter);
 
-// Health check
-app.get('/api/health', (req, res) => {
+// Health check (public)
+app.get('/api/health', async (req, res) => {
+  const ollamaAvailable = await isOllamaAvailable();
+  const embeddingInfo = await EmbeddingService.getProviderInfo();
+
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
     providers: {
       anthropic: !!process.env.ANTHROPIC_API_KEY,
       openai: !!process.env.OPENAI_API_KEY,
+      ollama: ollamaAvailable,
     },
+    embeddings: embeddingInfo,
   });
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
-  res.status(500).json({ error: 'Internal server error' });
+// Ollama models endpoint (public - for setup)
+app.get('/api/ollama/models', async (req, res) => {
+  try {
+    const available = await isOllamaAvailable();
+    if (!available) {
+      return res.json({ available: false, models: [] });
+    }
+    const models = await listOllamaModels();
+    res.json({ available: true, models });
+  } catch (error) {
+    res.json({ available: false, models: [], error: error.message });
+  }
 });
+
+// Protected routes (auth required when enabled)
+app.use('/api/profiles', requireAuth, profilesRouter);
+app.use('/api/projects', requireAuth, projectsRouter);
+app.use('/api/sessions', requireAuth, sessionsRouter);
+app.use('/api/sessions', requireAuth, messagesRouter);
+app.use('/api/sessions', requireAuth, anchorsRouter);
+app.use('/api/upload', requireAuth, uploadRouter);
+app.use('/api/similarity', requireAuth, similarityRouter);
+app.use('/api/inquiry-links', requireAuth, inquiryLinksRouter);
+app.use('/api/import', requireAuth, importRouter);
+app.use('/api/search', requireAuth, searchRouter);
+app.use('/api/synthesize', requireAuth, synthesisRouter);
+app.use('/api/insights', requireAuth, insightsRouter);
+app.use('/api/export', requireAuth, exportRouter);
+app.use('/api/backup', requireAuth, backupRouter);
+
+// Error handling middleware
+app.use(errorHandler);
 
 // Initialize and start
 async function start() {
@@ -66,6 +99,16 @@ async function start() {
 
     // Start background jobs
     startMetadataRefreshJob();
+
+    // Start scheduled backups if enabled
+    const backupConfig = BackupService.getConfig();
+    if (backupConfig.enabled) {
+      BackupService.startScheduledBackups({
+        intervalHours: backupConfig.intervalHours,
+        keepCount: backupConfig.keepCount,
+        compress: backupConfig.compress,
+      });
+    }
 
     // Start server - bind to all interfaces for LAN access
     app.listen(PORT, '0.0.0.0', () => {
