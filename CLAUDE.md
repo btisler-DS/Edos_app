@@ -39,7 +39,7 @@ npm run preview    # Preview production build
 ### Tech Stack
 - **Frontend:** React 18 + Vite + Zustand (state management)
 - **Backend:** Express + better-sqlite3 (synchronous SQLite)
-- **LLM Providers:** Anthropic (Claude) and OpenAI via SDKs
+- **LLM Providers:** Anthropic (Claude), OpenAI, and Ollama (local models) via SDKs
 - **PDF Export:** Puppeteer (headless Chromium)
 
 ### Directory Structure
@@ -54,7 +54,7 @@ server/src/
 ├── config/         # Constants (context limits, thresholds)
 ├── db/             # SQLite connection, schema, migrations
 ├── jobs/           # Background jobs (metadata refresh)
-├── providers/      # LLM abstraction (AnthropicProvider, OpenAIProvider)
+├── providers/      # LLM abstraction (AnthropicProvider, OpenAIProvider, OllamaProvider)
 ├── routes/         # Express route handlers
 ├── services/       # Business logic (11 services)
 └── utils/          # Helpers (ID generation, time, chunking)
@@ -81,12 +81,41 @@ Core tables: `sessions`, `messages`, `session_metadata`, `session_context`, `mod
 ```
 LLMProvider (base class)
 ├── AnthropicProvider  (Claude models)
-└── OpenAIProvider     (GPT models)
+├── OpenAIProvider     (GPT models)
+└── OllamaProvider     (Local models via Ollama)
 ```
 
 Methods: `sendMessageStream()`, `generateMetadata()`, `generateTitle()`
 
-Utility models for metadata: `claude-3-5-haiku-20241022` or `gpt-4o-mini`
+Utility models for metadata: `claude-3-5-haiku-20241022`, `gpt-4o-mini`, or local Ollama model
+
+### Ollama Setup (Local LLM)
+
+Ollama enables running models locally without API costs. Installed at `C:\Users\btisl\AppData\Local\Programs\Ollama\ollama.exe`.
+
+**Installed models:**
+- `qwen2.5:14b` (9 GB, Q4_K_M) — fast-response profile, fits in 12GB VRAM
+- `qwen2.5:32b` (19 GB, Q4_K_M) — deep-thought profile, partial CPU offload
+
+**Commands:**
+```bash
+ollama list                  # Show installed models
+ollama pull <model>          # Download a model
+ollama rm <model>            # Remove a model
+curl http://localhost:11434/api/version  # Check Ollama is running
+```
+
+**Model profiles in EDOS:**
+
+| Profile | Model | Behavior |
+|---------|-------|----------|
+| GPT-4o | gpt-4-turbo (cloud) | Base Edos prompt |
+| EDOS Local (Qwen 2.5 14B) | qwen2.5:14b | Base prompt + fast-response modifier |
+| EDOS Local (Qwen 2.5 32B) | qwen2.5:32b | Base prompt + deep-thought modifier |
+
+All profiles share the same core Edos system prompt. The local profiles append a single behavioral paragraph — the base instructions are never modified.
+
+Switch profiles via UI or API: `POST /api/profiles/:id/activate`
 
 ## Non-Negotiable Constraints
 
@@ -112,4 +141,5 @@ Copy `.env.example` to `.env` and configure:
 ANTHROPIC_API_KEY=your_key
 OPENAI_API_KEY=your_key
 PORT=3001
+OLLAMA_URL=http://localhost:11434
 ```
